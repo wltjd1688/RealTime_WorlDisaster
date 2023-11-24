@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
+import axios from 'axios';
 
 
 export const Navbar = () => {
@@ -16,8 +17,24 @@ export const Navbar = () => {
 
     if (token) {
       setIsLoggedIn(true);
+      alert('로그인 성공!');
     }
   }, []);
+
+  const handleLogout = async () => {
+    const token = Cookies.get('access-token');
+    try {
+      await axios.get('https://worldisaster.com/api/auth/logout', {
+        headers: {
+          'Authorization': `Bearer ${token}` // 헤더에 토큰 추가
+        }
+      });
+      setIsLoggedIn(false);
+      alert('로그아웃 성공!');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <>
@@ -33,7 +50,9 @@ export const Navbar = () => {
           {isLoggedIn ? (
             <>
               <span className='text-xl'><Link href="/mypage">내 계정</Link></span>
-              <span className='text-xl'><a href='https://worldisaster.com/api/auth/logout'>로그아웃</a></span>
+              <span className='text-xl'>
+                <a onClick={handleLogout} style={{ cursor: 'pointer' }}>로그아웃</a>
+              </span>
             </>
           ) : (
             <>
