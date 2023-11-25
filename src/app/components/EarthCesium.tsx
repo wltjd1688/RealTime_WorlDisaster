@@ -1,10 +1,14 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, Ion} from 'cesium';
+import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, IonWorldImageryStyle, ImageryLayer, createWorldImageryAsync} from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 554b28e (재난 핀 추가)
 // Ion.defaultAccessToken = "";
 
 interface disasterInfo {
@@ -37,6 +41,7 @@ const EarthCesium = () => {
   const router = useRouter();
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   const viewerRef = useRef<Viewer|null>(null);
 <<<<<<< HEAD
 
@@ -51,7 +56,13 @@ const EarthCesium = () => {
   const viewerRef = useRef<Viewer|null>(null);
 
 >>>>>>> 9ced3a8 ([update] 클러스터링 로직만 추가)
+<<<<<<< HEAD
 >>>>>>> 358c4b6 ([update] 클러스터링 로직만 추가)
+=======
+=======
+  
+>>>>>>> 96fbf07 (재난 핀 추가)
+>>>>>>> 554b28e (재난 핀 추가)
   function getColorForDisasterType(type:any) {
     switch (type) {
       case "Tropical Cyclone":
@@ -240,6 +251,12 @@ const EarthCesium = () => {
         const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
         router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
       });
+      viewer.camera.moveEnd.addEventListener(() => {
+        const cartographicPosition = viewer.camera.positionCartographic;
+        const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
+        const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
+        router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
+      });
 
       
 
@@ -250,6 +267,7 @@ const EarthCesium = () => {
         viewer.destroy();        
       }
     };
+<<<<<<< HEAD
   }
 <<<<<<< HEAD
 },[]);
@@ -411,7 +429,12 @@ useEffect(() => {
 =======
 =======
 >>>>>>> debc368 ([update] layout 띄우기)
+<<<<<<< HEAD
 >>>>>>> 96c3467 ([update] layout 띄우기)
+=======
+=======
+>>>>>>> 96fbf07 (재난 핀 추가)
+>>>>>>> 554b28e (재난 핀 추가)
 },[router]);
 >>>>>>> ea13814 ([update] 클러스터링)
 
