@@ -31,9 +31,13 @@ const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
   const viewerRef = useRef<Viewer|null>(null);
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 =======
+=======
+  
+>>>>>>> d5e0a87 (재난 핀 추가)
   function getColorForDisasterType(type:any) {
     switch (type) {
       case "Tropical Cyclone":
