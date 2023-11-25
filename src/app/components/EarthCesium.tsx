@@ -13,8 +13,8 @@ interface disasterInfo {
   d: string;
   dStatus: string;
   dDate: string;
-  dLatitude: number|null;
-  dLongitude: number|null;
+  dCountryLatitude: number|null;
+  dCountryLongitude: number|null;
   dLatitude: number;
   dLongitude: number;
 }
