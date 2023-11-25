@@ -26,7 +26,54 @@ interface EntityClusterExtension {
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
-  const viewerRef = useRef<Viewer>();
+  const viewerRef = useRef<Viewer|null>(null);
+
+  function getColorForDisasterType(type:any) {
+    switch (type) {
+      case "Tropical Cyclone":
+        return Color.RED;
+      case 'Mud Slide':
+        return Color.BROWN; // 진흙색으로 수정
+      case 'Flash Flood':
+        return Color.DARKBLUE; // 어두운 파랑색으로 수정
+      case 'Wild Fire':
+        return Color.ORANGE; // 불의 색상으로 수정
+      case 'Cold Wave':
+        return Color.CYAN; // 차가운 색상으로 수정
+      case 'Technological Disaster':
+        return Color.GRAY; // 기술적 재난을 회색으로 표현
+      case 'Snow Avalanche':
+        return Color.LIGHTSKYBLUE; // 눈사태에 어울리는 색상으로 수정
+      case 'Volcano':
+        return Color.DARKRED; // 활화산을 짙은 빨강으로 표현
+      case 'Fire':
+        return Color.FIREBRICK; // 불의 다른 색상으로 표현
+      case 'Epidemic':
+        return Color.GREENYELLOW; // 전염병을 밝은 녹색으로 표현
+      case 'Storm Surge':
+        return Color.STEELBLUE; // 폭풍 해일을 철색으로 표현
+      case 'Tsunami':
+        return Color.DEEPSKYBLUE; // 쓰나미를 하늘색으로 표현
+      case 'Insect Infestation':
+        return Color.OLIVE; // 곤충 재해를 올리브색으로 표현
+      case 'Drought':
+        return Color.TAN; // 가뭄을 베이지색으로 표현
+      case 'Earthquake':
+        return Color.SIENNA; // 지진을 진흙 갈색으로 표현
+      case 'Flood':
+        return Color.NAVY; // 홍수를 진한 파랑색으로 표현
+      case 'Land Slide':
+        return Color.SADDLEBROWN; // 산사태를 갈색으로 표현
+      case 'Severe Local Storm':
+        return Color.DARKSLATEGRAY; // 강한 폭풍을 어두운 회색으로 표현
+      case 'Extratropical Cyclone':
+        return Color.DARKORCHID; // 외대륙 사이클론을 어두운 보라색으로 표현
+      case 'Heat Wave':
+        return Color.RED; // 열파를 빨간색으로 표현      
+      default:
+        return Color.WHITE;
+    }
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined' && cesiumContainer.current) {
