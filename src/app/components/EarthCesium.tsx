@@ -36,6 +36,7 @@ const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
 <<<<<<< HEAD
+<<<<<<< HEAD
   const viewerRef = useRef<Viewer|null>(null);
 <<<<<<< HEAD
 
@@ -43,7 +44,14 @@ const EarthCesium = () => {
 =======
 =======
   
+<<<<<<< HEAD
 >>>>>>> d5e0a87 (재난 핀 추가)
+=======
+=======
+  const viewerRef = useRef<Viewer|null>(null);
+
+>>>>>>> 9ced3a8 ([update] 클러스터링 로직만 추가)
+>>>>>>> 358c4b6 ([update] 클러스터링 로직만 추가)
   function getColorForDisasterType(type:any) {
     switch (type) {
       case "Tropical Cyclone":
@@ -90,9 +98,12 @@ const EarthCesium = () => {
         return Color.WHITE;
     }
   }
+<<<<<<< HEAD
 =======
   const viewerRef = useRef<Viewer>();
 >>>>>>> 3e2b7dd ([update] oldDisaster 핑생성(타입별 색깔 다르게))
+=======
+>>>>>>> 9ced3a8 ([update] 클러스터링 로직만 추가)
 
 >>>>>>> 9ee4ddf (클러스터 수정)
   useEffect(() => {
