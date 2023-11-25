@@ -170,7 +170,6 @@ const EarthCesium = () => {
 
       
 
->>>>>>> fa3b6d6 ([update])
     return () => {
       if (viewer && viewer.destroy) {
         viewer.destroy();        
