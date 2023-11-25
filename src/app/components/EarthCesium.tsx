@@ -168,6 +168,8 @@ const EarthCesium = () => {
 
       
 
+      
+
     return () => {
       if (viewer && viewer.destroy) {
         viewer.destroy();
