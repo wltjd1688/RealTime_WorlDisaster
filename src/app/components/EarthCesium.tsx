@@ -35,6 +35,7 @@ interface EntityClusterExtension {
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
+<<<<<<< HEAD
   const viewerRef = useRef<Viewer|null>(null);
 <<<<<<< HEAD
 
@@ -89,6 +90,9 @@ const EarthCesium = () => {
         return Color.WHITE;
     }
   }
+=======
+  const viewerRef = useRef<Viewer>();
+>>>>>>> 3e2b7dd ([update] oldDisaster 핑생성(타입별 색깔 다르게))
 
 >>>>>>> 9ee4ddf (클러스터 수정)
   useEffect(() => {
