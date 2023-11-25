@@ -17,9 +17,24 @@ export const Navbar = () => {
 
     if (token) {
       setIsLoggedIn(true);
-      alert('로그인 성공!');
     }
   }, []);
+
+
+  const handleLogIn = async () => {
+    const token = Cookies.get('access-token');
+    try {
+      await axios.get('https://worldisaster.com/api/auth/google', {
+        // headers: {
+        //   'Authorization': `Bearer ${token}` // 헤더에 토큰 추가
+        // }
+      });
+      setIsLoggedIn(true);
+      alert('로그인 성공!');
+    } catch (error) {
+      console.error('LogIn failed:', error);
+    }
+  };
 
   const handleLogout = async () => {
     const token = Cookies.get('access-token');
@@ -56,7 +71,7 @@ export const Navbar = () => {
             </>
           ) : (
             <>
-              <span className='text-xl'><a href='https://worldisaster.com/api/auth/google'>로그인</a></span>
+              <span className='text-xl'><a href='https://worldisaster.com/api/auth/google' onClick={handleLogIn}>로그인</a></span>
             </>
           )}
         </div>
