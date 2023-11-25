@@ -5,6 +5,7 @@ import axios from "axios";
 import Cookies from 'js-cookie';
 import { usePathname } from "next/navigation";
 import { NextUIProvider, Switch, Tabs, Tab, Card, CardBody, Accordion, AccordionItem } from "@nextui-org/react";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@nextui-org/react";
 import '../globals.css';
 
 interface User {
@@ -57,7 +58,8 @@ const Mypage: React.FC = () => {
                           <div className="flex flex-col gap-2">
                             {userElem.map((data, index) => (
                               <div key={index}>
-                                <p>이름: {data.name}님 안녕하세요👋</p>
+                                <p className="my-3">{data.name}님 안녕하세요👋</p>
+                                <p>이름: {data.name}</p>
                                 <p>이메일: {data.email}</p>
                               </div>
                             ))}
@@ -77,11 +79,22 @@ const Mypage: React.FC = () => {
                     </CardBody>
                   </Card>  
                 </Tab>
-                <Tab key="support" title="후원">
+                <Tab key="support" title="후원 내역">
                   <Card className="p-3">
-                    <CardBody>
-                      후원내역
-                    </CardBody>
+                  <Table aria-label="후원 내역">
+                        <TableHeader>
+                          <TableColumn>국가/지역</TableColumn>
+                          <TableColumn>재난 종류</TableColumn>
+                          <TableColumn>후원 금액</TableColumn>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow key="1">
+                            <TableCell>대한민국/서울</TableCell>
+                            <TableCell>홍수</TableCell>
+                            <TableCell>200,000원</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
                   </Card>  
                 </Tab>
               </Tabs>
