@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import { Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, ImageryLayer, IonWorldImageryStyle } from 'cesium';
+import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, IonWorldImageryStyle, ImageryLayer, createWorldImageryAsync} from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
@@ -178,7 +178,6 @@ const EarthCesium = () => {
         viewer.destroy();
       }
     };
-  
 },[router]);
 
   return (
