@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, IonWorldImageryStyle, ImageryLayer, createWorldImageryAsync} from 'cesium';
+import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster,IonWorldImageryStyle, IonImageryProvider, ImageryLayer, createWorldImageryAsync} from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
@@ -77,7 +77,8 @@ const EarthCesium = () => {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && cesiumContainer.current) {
-      let viewer = new Viewer(cesiumContainer.current,{
+      viewer = new Viewer(cesiumContainer.current,{
+        // 여기에 옵션을 설정합니다.
         animation: false,  // 애니메이션 위젯 비활성화
         baseLayerPicker: false,  // 베이스 레이어 선택기 비활성화
         fullscreenButton: false,  // 전체 화면 버튼 비활성화
@@ -89,8 +90,12 @@ const EarthCesium = () => {
         selectionIndicator: false,  // 선택 지시기 비활성화
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
+        baseLayer: ImageryLayer.fromWorldImagery({
+          style: IonWorldImageryStyle.AERIAL_WITH_LABELS,
+        }),
         // 추가적인 옵션들...
       });
+    }
 
     // 클러스터링 설정
     viewer.entities.cluster = new EntityCluster({
@@ -153,20 +158,18 @@ const EarthCesium = () => {
         }
       }
 
-      loadData();
+    // 만든함수 실행
+    loadData();
+    
+    // 카메라 이동시 uri에 표시되는 좌표값 변경
+    viewer.camera.moveEnd.addEventListener(() => {
+      const cartographicPosition = viewer.camera.positionCartographic;
+      const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
+      const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
+      router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
+    });
 
-      viewer.camera.moveEnd.addEventListener(() => {
-        const cartographicPosition = viewer.camera.positionCartographic;
-        const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
-        const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
-        router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
-      });
-      viewer.camera.moveEnd.addEventListener(() => {
-        const cartographicPosition = viewer.camera.positionCartographic;
-        const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
-        const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
-        router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
-      });
+      
 
       
 
