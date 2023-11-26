@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
 
+
+// Ion.defaultAccessToken = "";
+
 interface disasterInfo {
   dId: number;
   dType: string;
