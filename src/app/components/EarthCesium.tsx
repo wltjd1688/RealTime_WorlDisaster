@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource} from 'cesium';
+import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, Ion} from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
@@ -121,6 +121,7 @@ const EarthCesium = () => {
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
 <<<<<<< HEAD
+<<<<<<< HEAD
     });
     }
 
@@ -162,27 +163,95 @@ const EarthCesium = () => {
         // maximumRenderTimeChange?: number;
         // depthPlaneEllipsoidOffset?: number;
         // msaaSamples?: number;
+=======
+        // 추가적인 옵션들...
+>>>>>>> 96c3467 ([update] layout 띄우기)
       });
 
-    viewerRef.current = viewer;  
-
-    // layout 추가
-    createWorldImageryAsync({
-      style: IonWorldImageryStyle.AERIAL_WITH_LABELS
-    }).then((imageryProvider) => {
-      viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
-      console.log(`layout추가 성공`)
-    }).catch((err) => {
-      console.log(`layout추가 실패: ${err}`);
+    // 클러스터링 설정
+    viewer.entities.cluster = new EntityCluster({
+      enabled: true,
+      pixelRange: 15,
+      minimumClusterSize: 3
     });
 
+<<<<<<< HEAD
     // viewer 정리 로직 추가
+=======
+    // 클러스터링 이벤트 핸들러 설정
+    viewer.entities.cluster.clusterEvent.addEventListener((clusteredEntities:any, cluster:any) => {
+      cluster.label.show = true;
+      cluster.billboard.show = true;
+      cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
+      
+      const pinbuilder = new PinBuilder();
+  
+      const singleDigitPins = new Array(8);
+      for (let i = 0; i < singleDigitPins.length; ++i) {
+        singleDigitPins[i] = pinbuilder.fromText(`${i+2}`, Color.VIOLET, 48).toDataURL();
+      }
+
+      const count = clusteredEntities.length;
+      if (count < 10){
+        cluster.billboard.image = singleDigitPins[count - 2];
+      } else {
+        cluster.billboard.image = pinbuilder.fromText("10+", getColorForDisasterType(''), 48).toDataURL();
+      }
+    });
+
+      
+      const loadData = async () => {
+        try{
+          const pinImage = new PinBuilder();
+          const res = await axios('https://worldisaster.com/api/oldDisasters');
+          const data = await res.data;
+          data.forEach((item:disasterInfo,index:number)=>{
+            if (typeof item.dCountryLatitude === 'number' && typeof item.dCountryLongitude === 'number'){
+            let latitude = item.dCountryLatitude;
+            let longitude = item.dCountryLongitude;
+            viewer.entities.add({
+              position: Cartesian3.fromDegrees(longitude, latitude),
+              billboard: {
+                image: pinImage.fromColor(getColorForDisasterType(item.dType), 48).toDataURL(),
+              },
+              // point: {
+              //   pixelSize: 20,
+              //   color: getColorForDisasterType(item.dType),
+              // },
+              label: {
+                Type: item.dType,
+                country: item.dCountry,
+                status: item.dStatus,
+                data: item.dDate
+              },
+            });
+            }
+          });  
+        } catch (error) {
+          console.log(error)
+        }
+      }
+
+      loadData();
+
+      viewer.camera.moveEnd.addEventListener(() => {
+        const cartographicPosition = viewer.camera.positionCartographic;
+        const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
+        const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
+        router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
+      });
+
+      
+
+>>>>>>> fa3b6d6 ([update])
+>>>>>>> 96c3467 ([update] layout 띄우기)
     return () => {
       if (viewer && viewer.destroy) {
         viewer.destroy();        
       }
     };
   }
+<<<<<<< HEAD
 },[]);
 
 useEffect(() => {
@@ -326,6 +395,7 @@ useEffect(() => {
       }
     };
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     
   }, [router]);
@@ -338,6 +408,10 @@ useEffect(() => {
 }, [router]);
 >>>>>>> 9ee4ddf (클러스터 수정)
 =======
+=======
+=======
+>>>>>>> debc368 ([update] layout 띄우기)
+>>>>>>> 96c3467 ([update] layout 띄우기)
 },[router]);
 >>>>>>> ea13814 ([update] 클러스터링)
 
