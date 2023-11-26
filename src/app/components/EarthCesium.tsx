@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, Ion} from 'cesium';
+import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster, IonWorldImageryStyle, ImageryLayer, createWorldImageryAsync} from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
@@ -87,8 +87,12 @@ const EarthCesium = () => {
         selectionIndicator: false,  // 선택 지시기 비활성화
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
+        baseLayer: ImageryLayer.fromWorldImagery({
+          style: IonWorldImageryStyle.AERIAL_WITH_LABELS,
+        }),
         // 추가적인 옵션들...
       });
+    }
 
     // 클러스터링 설정
     viewer.entities.cluster = new EntityCluster({
@@ -173,7 +177,6 @@ const EarthCesium = () => {
         viewer.destroy();
       }
     };
-  }
 },[router]);
 
   return (
