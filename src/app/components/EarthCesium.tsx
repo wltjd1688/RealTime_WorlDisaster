@@ -13,8 +13,13 @@ interface disasterInfo {
   d: string;
   dStatus: string;
   dDate: string;
+<<<<<<< HEAD
   dCountryLatitude: number|null;
   dCountryLongitude: number|null;
+=======
+  dLatitude: number|null;
+  dLongitude: number|null;
+>>>>>>> ea13814 ([update] 클러스터링)
   dLatitude: number;
   dLongitude: number;
 }
@@ -213,40 +218,48 @@ useEffect(() => {
     for (let i = 0; i < singleDigitPins.length; ++i) {
       singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
     }
+    
 
-  // cluster pinBuild
-  const loadData = async (viewer:Viewer) => {
-    const pinimage = new PinBuilder();
-    try{
-      const res = await axios('https://worldisaster.com/api/oldDisasters');
-      const data = await res.data;
 
-      data.forEach((item:disasterInfo)=>{
-        if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number'){
-        let latitude = item.dLatitude;
-        let longitude = item.dLongitude;
-        customDataSource.entities.add({
-          // 데이터 좌표 넣기
-          position: Cartesian3.fromDegrees(longitude, latitude),
-          // 표지판 이미지
-          billboard: {
-            image: pinimage.fromText(`${1}`,getColorForDisasterType(item.dType), 48).toDataURL(), // 표지판 이미지
-          },
-          // 포인트 이미지
-          // point: {
-          //   pixelSize: 20,
-          //   color: getColorForDisasterType(item.dType),
-          // },
+
+    // 데이터 가져오기 및 point 생성
+    const loadData = async () => {
+      try{
+        const pinImage = new PinBuilder();
+        const res = await axios('https://worldisaster.com/api/oldDisasters');
+        const data = await res.data;
+        data.forEach((item:disasterInfo,index:number)=>{
+          if (typeof item.dCountryLatitude === 'number' && typeof item.dCountryLongitude === 'number'){
+          let latitude = item.dCountryLatitude;
+          let longitude = item.dCountryLongitude;
+          viewer.entities.add({
+            // 데이터 좌표 넣기
+            position: Cartesian3.fromDegrees(longitude, latitude),
+            // 표지판 이미지
+            billboard: {
+              image: pinImage.fromColor(getColorForDisasterType(item.dType), 48).toDataURL(),
+            },
+            // 포인트 이미지
+            // point: {
+            //   pixelSize: 20,
+            //   color: getColorForDisasterType(item.dType),
+            // },
+            label: {
+              Type: item.dType,
+              country: item.dCountry,
+              status: item.dStatus,
+              data: item.dDate
+            },
+          });
+          }
         });
-        }
-      });
-      console.log(`데이터 로드 성공`);
-      console.log(data)
-    } catch(err) {
-      console.log('데이터 로드 실패', err);
+        console.log(`데이터 가져오기 성공`)  
+      } catch (error) {
+        console.log(`데이터 가져오기 실패: ${error}`)
+      }
     }
-  }
 
+<<<<<<< HEAD
   loadData(viewer);
 
   viewer.dataSources.add(customDataSource);
@@ -261,18 +274,43 @@ useEffect(() => {
 
   const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
 >>>>>>> 9ee4ddf (클러스터 수정)
+=======
+    // 만든함수 실행
+    loadData();
+    
+    // 카메라 이동시 uri에 표시되는 좌표값 변경
+    viewer.camera.moveEnd.addEventListener(() => {
+>>>>>>> ea13814 ([update] 클러스터링)
       const cartographicPosition = viewer.camera.positionCartographic;
       const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
       const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
       router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
 <<<<<<< HEAD
+<<<<<<< HEAD
     });
 
+=======
+    });
+
+    // layout 추가
+    createWorldImageryAsync({
+      style: IonWorldImageryStyle.AERIAL_WITH_LABELS
+    }).then((imageryProvider) => {
+      viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
+      console.log(`layout추가 성공`)
+    }).catch((err) => {
+      console.log(`layout추가 실패: ${err}`);
+    }
+    );
+
+    // viewer 정리 로직 추가
+>>>>>>> ea13814 ([update] 클러스터링)
     return () => {
       if (viewer && viewer.destroy) {
         viewer.destroy();
       }
     };
+<<<<<<< HEAD
 
     
   }, [router]);
@@ -284,6 +322,9 @@ useEffect(() => {
   };
 }, [router]);
 >>>>>>> 9ee4ddf (클러스터 수정)
+=======
+},[router]);
+>>>>>>> ea13814 ([update] 클러스터링)
 
   return (
     <div id="cesiumContainer" ref={cesiumContainer}></div>
