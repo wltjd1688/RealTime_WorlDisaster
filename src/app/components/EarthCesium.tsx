@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource} from 'cesium';
+import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, VerticalOrigin, NearFarScalar} from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
@@ -158,15 +158,30 @@ useEffect(() => {
 
   customDataSource.clustering = new EntityCluster({
     enabled: true,
-    pixelRange: 20,
-    minimumClusterSize: 3,
+    pixelRange: 30,
+    minimumClusterSize: 2,
     clusterBillboards: true,
     clusterLabels: true,
     clusterPoints: true,
-  })
+  });
+
+  const pinBuilder = new PinBuilder();
+  const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
+  const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
+  const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
+  const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
+  const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
+  const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
+  const singleDigitPins = new Array(10);
+  for (let i = 0; i < singleDigitPins.length; ++i) {
+    singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
+  };
 
   customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
     let count = clusteredEntities.length;
+      cluster.billboard.show = true;
+      cluster.label.show = false;
+      cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
 
     if (count >= 50) {
       cluster.billboard.image = pin50;
@@ -185,21 +200,8 @@ useEffect(() => {
     }
   })
 
-  const pinBuilder = new PinBuilder();
-    const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
-    const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
-    const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
-    const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
-    const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
-    const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
-    const singleDigitPins = new Array(10);
-    for (let i = 0; i < singleDigitPins.length; ++i) {
-      singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
-    }
-
   // cluster pinBuild
   const loadData = async (viewer:Viewer) => {
-    const pinimage = new PinBuilder();
     try{
       const res = await axios('https://worldisaster.com/api/oldDisasters');
       const data = await res.data;
@@ -208,23 +210,34 @@ useEffect(() => {
         if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number'){
         let latitude = item.dLatitude;
         let longitude = item.dLongitude;
+        let textlength = item.dType.length;
         customDataSource.entities.add({
           // 데이터 좌표 넣기
           position: Cartesian3.fromDegrees(longitude, latitude),
           // 표지판 이미지
-          billboard: {
-            image: pinimage.fromText(`${1}`,getColorForDisasterType(item.dType), 48).toDataURL(), // 표지판 이미지
-          },
-          // 포인트 이미지
-          // point: {
-          //   pixelSize: 20,
-          //   color: getColorForDisasterType(item.dType),
+          // billboard: {
+          //   image: pinBuilder.fromText(`${1}`,getColorForDisasterType(item.dType), 48).toDataURL(), // 표지판 이미지
           // },
+          //포인트 이미지
+          point: {
+            pixelSize: 10,
+            color: getColorForDisasterType(item.dType),
+            scaleByDistance: new NearFarScalar(10e3, 8, 10e6, 0.3)
+          },
+          // 라벨
+          label: {
+            text: item.dType,
+            font: '14pt monospace',
+            outlineWidth: 2,
+            verticalOrigin: VerticalOrigin.BOTTOM,
+            pixelOffset: new Cartesian3(50 + (textlength*3)*1.5, 9, 0),
+            translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
+            eyeOffset: new Cartesian3(0, 0, -100),
+          },
         });
         }
       });
       console.log(`데이터 로드 성공`);
-      console.log(data)
     } catch(err) {
       console.log('데이터 로드 실패', err);
     }
