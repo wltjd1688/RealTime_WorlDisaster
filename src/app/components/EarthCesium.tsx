@@ -1,10 +1,9 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, VerticalOrigin, EntityCluster,IonWorldImageryStyle, IonImageryProvider, ImageryLayer, createWorldImageryAsync} from 'cesium';
+import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource} from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
-
 
 // Ion.defaultAccessToken = "";
 
@@ -27,7 +26,6 @@ interface EntityClusterExtension {
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
-  
   function getColorForDisasterType(type:any) {
     switch (type) {
       case "Tropical Cyclone":
@@ -78,7 +76,6 @@ const EarthCesium = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && cesiumContainer.current) {
       viewer = new Viewer(cesiumContainer.current,{
-        // 여기에 옵션을 설정합니다.
         animation: false,  // 애니메이션 위젯 비활성화
         baseLayerPicker: false,  // 베이스 레이어 선택기 비활성화
         fullscreenButton: false,  // 전체 화면 버튼 비활성화
@@ -90,73 +87,98 @@ const EarthCesium = () => {
         selectionIndicator: false,  // 선택 지시기 비활성화
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
-        baseLayer: ImageryLayer.fromWorldImagery({
-          style: IonWorldImageryStyle.AERIAL_WITH_LABELS,
-        }),
-        // 추가적인 옵션들...
+        // 이거 외에 옵션들
+        // navigationInstructionsInitiallyVisible?: boolean;
+        // scene3DOnly?: boolean;
+        // shouldAnimate?: boolean;
+        // clockViewModel?: ClockViewModel;
+        // selectedImageryProviderViewModel?: ProviderViewModel;
+        // imageryProviderViewModels?: ProviderViewModel[];
+        // selectedTerrainProviderViewModel?: ProviderViewModel;
+        // terrainProviderViewModels?: ProviderViewModel[];
+        // baseLayer?: ImageryLayer | false;
+        // terrainProvider?: TerrainProvider;
+        // terrain?: Terrain;
+        // skyBox?: SkyBox | false;
+        // skyAtmosphere?: SkyAtmosphere | false;
+        // fullscreenElement?: Element | string;
+        // useDefaultRenderLoop?: boolean;
+        // targetFrameRate?: number;
+        // showRenderLoopErrors?: boolean;
+        // useBrowserRecommendedResolution?: boolean;
+        // automaticallyTrackDataSourceClocks?: boolean;
+        // contextOptions?: ContextOptions;
+        // sceneMode?: SceneMode;
+        // mapProjection?: MapProjection;
+        // globe?: Globe | false;
+        // orderIndependentTranslucency?: boolean;
+        // creditContainer?: Element | string;
+        // creditViewport?: Element | string;
+        // dataSources?: DataSourceCollection;
+        // shadows?: boolean;
+        // terrainShadows?: ShadowMode;
+        // mapMode2D?: MapMode2D;
+        // projectionPicker?: boolean;
+        // blurActiveElementOnCanvasFocus?: boolean;
+        // requestRenderMode?: boolean;
+        // maximumRenderTimeChange?: number;
+        // depthPlaneEllipsoidOffset?: number;
+        // msaaSamples?: number;
       });
     }
 
-    // 클러스터링 설정
-    viewer.entities.cluster = new EntityCluster({
-      enabled: true,
-      pixelRange: 15,
-      minimumClusterSize: 3
-    });
+    // cluster 생성
+    const pinBuilder = new PinBuilder();
+    const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
+    const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
+    const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
+    const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
+    const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
+    const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
+    const singleDigitPins = new Array(10);
+    for (let i = 0; i < singleDigitPins.length; ++i) {
+      singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
+    }
+    
 
-    // 클러스터링 이벤트 핸들러 설정
-    viewer.entities.cluster.clusterEvent.addEventListener((clusteredEntities:any, cluster:any) => {
-      cluster.label.show = true;
-      cluster.billboard.show = true;
-      cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
-      
-      const pinbuilder = new PinBuilder();
-  
-      const singleDigitPins = new Array(8);
-      for (let i = 0; i < singleDigitPins.length; ++i) {
-        singleDigitPins[i] = pinbuilder.fromText(`${i+2}`, Color.VIOLET, 48).toDataURL();
-      }
 
-      const count = clusteredEntities.length;
-      if (count < 10){
-        cluster.billboard.image = singleDigitPins[count - 2];
-      } else {
-        cluster.billboard.image = pinbuilder.fromText("10+", getColorForDisasterType(''), 48).toDataURL();
-      }
-    });
 
-      
-      const loadData = async () => {
-        try{
-          const pinImage = new PinBuilder();
-          const res = await axios('https://worldisaster.com/api/oldDisasters');
-          const data = await res.data;
-          data.forEach((item:disasterInfo,index:number)=>{
-            if (typeof item.dCountryLatitude === 'number' && typeof item.dCountryLongitude === 'number'){
-            let latitude = item.dCountryLatitude;
-            let longitude = item.dCountryLongitude;
-            viewer.entities.add({
-              position: Cartesian3.fromDegrees(longitude, latitude),
-              billboard: {
-                image: pinImage.fromColor(getColorForDisasterType(item.dType), 48).toDataURL(),
-              },
-              // point: {
-              //   pixelSize: 20,
-              //   color: getColorForDisasterType(item.dType),
-              // },
-              label: {
-                Type: item.dType,
-                country: item.dCountry,
-                status: item.dStatus,
-                data: item.dDate
-              },
-            });
-            }
-          });  
-        } catch (error) {
-          console.log(error)
-        }
+    // 데이터 가져오기 및 point 생성
+    const loadData = async () => {
+      try{
+        const pinImage = new PinBuilder();
+        const res = await axios('https://worldisaster.com/api/oldDisasters');
+        const data = await res.data;
+        data.forEach((item:disasterInfo,index:number)=>{
+          if (typeof item.dCountryLatitude === 'number' && typeof item.dCountryLongitude === 'number'){
+          let latitude = item.dCountryLatitude;
+          let longitude = item.dCountryLongitude;
+          viewer.entities.add({
+            // 데이터 좌표 넣기
+            position: Cartesian3.fromDegrees(longitude, latitude),
+            // 표지판 이미지
+            billboard: {
+              image: pinImage.fromColor(getColorForDisasterType(item.dType), 48).toDataURL(),
+            },
+            // 포인트 이미지
+            // point: {
+            //   pixelSize: 20,
+            //   color: getColorForDisasterType(item.dType),
+            // },
+            label: {
+              Type: item.dType,
+              country: item.dCountry,
+              status: item.dStatus,
+              data: item.dDate
+            },
+          });
+          }
+        });
+        console.log(`데이터 가져오기 성공`)  
+      } catch (error) {
+        console.log(`데이터 가져오기 실패: ${error}`)
       }
+    }
 
     // 만든함수 실행
     loadData();
@@ -167,15 +189,23 @@ const EarthCesium = () => {
       const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
       const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
       router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
-    });
+  });
 
-      
+    // layout 추가
+    createWorldImageryAsync({
+      style: IonWorldImageryStyle.AERIAL_WITH_LABELS
+    }).then((imageryProvider) => {
+      viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
+      console.log(`layout추가 성공`)
+    }).catch((err) => {
+      console.log(`layout추가 실패: ${err}`);
+    }
+    );
 
-      
-
+    // viewer 정리 로직 추가
     return () => {
       if (viewer && viewer.destroy) {
-        viewer.destroy();        
+        viewer.destroy();
       }
     };
 },[router]);
