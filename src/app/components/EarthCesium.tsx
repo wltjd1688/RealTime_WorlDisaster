@@ -50,6 +50,7 @@ const EarthCesium = () => {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   const viewerRef = useRef<Viewer|null>(null);
 <<<<<<< HEAD
 
@@ -75,7 +76,14 @@ const EarthCesium = () => {
 =======
 =======
 >>>>>>> 3573a5d ([update] 클러스터링)
+<<<<<<< HEAD
 >>>>>>> 9e8bd34 ([update] 클러스터링)
+=======
+=======
+  const viewerRef = useRef<Viewer|null>(null);
+
+>>>>>>> 184c2fb ([pull] 초원 레포)
+>>>>>>> 5e41e18 ([pull] 초원 레포)
   function getColorForDisasterType(type:any) {
     switch (type) {
       case "Tropical Cyclone":
@@ -133,10 +141,14 @@ const EarthCesium = () => {
   useEffect(() => {
     if (typeof window !== 'undefined' && cesiumContainer.current) {
 <<<<<<< HEAD
+<<<<<<< HEAD
       let viewer = new Viewer(cesiumContainer.current,{
 =======
       viewer = new Viewer(cesiumContainer.current,{
 >>>>>>> 9e8bd34 ([update] 클러스터링)
+=======
+      let viewer = new Viewer(cesiumContainer.current,{
+>>>>>>> 5e41e18 ([pull] 초원 레포)
         animation: false,  // 애니메이션 위젯 비활성화
         baseLayerPicker: false,  // 베이스 레이어 선택기 비활성화
         fullscreenButton: false,  // 전체 화면 버튼 비활성화
@@ -148,6 +160,7 @@ const EarthCesium = () => {
         selectionIndicator: false,  // 선택 지시기 비활성화
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -221,6 +234,8 @@ const EarthCesium = () => {
       }
 =======
         // 이거 외에 옵션들
+=======
+>>>>>>> 5e41e18 ([pull] 초원 레포)
         // navigationInstructionsInitiallyVisible?: boolean;
         // scene3DOnly?: boolean;
         // shouldAnimate?: boolean;
@@ -258,10 +273,66 @@ const EarthCesium = () => {
         // depthPlaneEllipsoidOffset?: number;
         // msaaSamples?: number;
       });
-    }
 
-    // cluster 생성
-    const pinBuilder = new PinBuilder();
+    viewerRef.current = viewer;  
+
+    // layout 추가
+    createWorldImageryAsync({
+      style: IonWorldImageryStyle.AERIAL_WITH_LABELS
+    }).then((imageryProvider) => {
+      viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
+      console.log(`layout추가 성공`)
+    }).catch((err) => {
+      console.log(`layout추가 실패: ${err}`);
+    });
+
+    // viewer 정리 로직 추가
+    return () => {
+      if (viewer && viewer.destroy) {
+        viewer.destroy();        
+      }
+    };
+  }
+},[]);
+
+useEffect(() => {
+  const viewer = viewerRef.current;
+  if(!viewer || !viewer.scene || !viewer.camera) {
+    return;
+  };
+
+  const customDataSource = new CustomDataSource('Disasters');
+
+  customDataSource.clustering = new EntityCluster({
+    enabled: true,
+    pixelRange: 20,
+    minimumClusterSize: 3,
+    clusterBillboards: true,
+    clusterLabels: true,
+    clusterPoints: true,
+  })
+
+  customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
+    let count = clusteredEntities.length;
+
+    if (count >= 50) {
+      cluster.billboard.image = pin50;
+    } else if (count >= 40) {
+      cluster.billboard.image = pin40;
+    } else if (count >= 30) {
+      cluster.billboard.image = pin30;
+    } else if (count >= 20) {
+      cluster.billboard.image = pin20;
+    } else if (count >= 10) {
+      cluster.billboard.image = pin10;
+    } else if (count >= 5) {
+      cluster.billboard.image = pin5;
+    } else {
+      cluster.billboard.image = singleDigitPins[count];
+    }
+  })
+
+  const pinBuilder = new PinBuilder();
     const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
     const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
     const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
@@ -272,48 +343,46 @@ const EarthCesium = () => {
     for (let i = 0; i < singleDigitPins.length; ++i) {
       singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
     }
-    
 
+<<<<<<< HEAD
 >>>>>>> 9e8bd34 ([update] 클러스터링)
+=======
+  // cluster pinBuild
+  const loadData = async (viewer:Viewer) => {
+    const pinimage = new PinBuilder();
+    try{
+      const res = await axios('https://worldisaster.com/api/oldDisasters');
+      const data = await res.data;
+>>>>>>> 5e41e18 ([pull] 초원 레포)
 
-
-    // 데이터 가져오기 및 point 생성
-    const loadData = async () => {
-      try{
-        const pinImage = new PinBuilder();
-        const res = await axios('https://worldisaster.com/api/oldDisasters');
-        const data = await res.data;
-        data.forEach((item:disasterInfo,index:number)=>{
-          if (typeof item.dCountryLatitude === 'number' && typeof item.dCountryLongitude === 'number'){
-          let latitude = item.dCountryLatitude;
-          let longitude = item.dCountryLongitude;
-          viewer.entities.add({
-            // 데이터 좌표 넣기
-            position: Cartesian3.fromDegrees(longitude, latitude),
-            // 표지판 이미지
-            billboard: {
-              image: pinImage.fromColor(getColorForDisasterType(item.dType), 48).toDataURL(),
-            },
-            // 포인트 이미지
-            // point: {
-            //   pixelSize: 20,
-            //   color: getColorForDisasterType(item.dType),
-            // },
-            label: {
-              Type: item.dType,
-              country: item.dCountry,
-              status: item.dStatus,
-              data: item.dDate
-            },
-          });
-          }
+      data.forEach((item:disasterInfo)=>{
+        if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number'){
+        let latitude = item.dLatitude;
+        let longitude = item.dLongitude;
+        customDataSource.entities.add({
+          // 데이터 좌표 넣기
+          position: Cartesian3.fromDegrees(longitude, latitude),
+          // 표지판 이미지
+          billboard: {
+            image: pinimage.fromText(`${1}`,getColorForDisasterType(item.dType), 48).toDataURL(), // 표지판 이미지
+          },
+          // 포인트 이미지
+          // point: {
+          //   pixelSize: 20,
+          //   color: getColorForDisasterType(item.dType),
+          // },
         });
-        console.log(`데이터 가져오기 성공`)  
-      } catch (error) {
-        console.log(`데이터 가져오기 실패: ${error}`)
-      }
+        }
+      });
+      console.log(`데이터 로드 성공`);
+      console.log(data)
+    } catch(err) {
+      console.log('데이터 로드 실패', err);
     }
+  }
+  loadData(viewer);
 
+<<<<<<< HEAD
 <<<<<<< HEAD
       loadData();
 
@@ -340,12 +409,26 @@ const EarthCesium = () => {
     
     // 카메라 이동시 uri에 표시되는 좌표값 변경
     viewer.camera.moveEnd.addEventListener(() => {
+=======
+  viewer.dataSources.add(customDataSource);
+
+},[]);
+
+useEffect(() => {
+  const viewer = viewerRef.current;
+  if(!viewer || !viewer.scene || !viewer.camera) {
+    return;
+  };
+
+  const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
+>>>>>>> 5e41e18 ([pull] 초원 레포)
       const cartographicPosition = viewer.camera.positionCartographic;
       const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
       const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
       router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
   });
 
+<<<<<<< HEAD
     // layout 추가
     createWorldImageryAsync({
       style: IonWorldImageryStyle.AERIAL_WITH_LABELS
@@ -533,7 +616,16 @@ useEffect(() => {
 >>>>>>> 96fbf07 (재난 핀 추가)
 >>>>>>> 554b28e (재난 핀 추가)
 },[router]);
+<<<<<<< HEAD
 >>>>>>> ea13814 ([update] 클러스터링)
+=======
+=======
+  return () => {
+    moveEndListener();
+  };
+}, [router]);
+>>>>>>> 184c2fb ([pull] 초원 레포)
+>>>>>>> 5e41e18 ([pull] 초원 레포)
 
   return (
     <div id="cesiumContainer" ref={cesiumContainer}></div>
