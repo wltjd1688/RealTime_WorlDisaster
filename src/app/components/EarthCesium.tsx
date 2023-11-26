@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
 
-Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIzZmExZTg0My0yY2RiLTQ0NDEtYTg1Mi03OTVlZDk4NDA3NGEiLCJpZCI6MTgwMTk3LCJpYXQiOjE3MDA3Mjc4NjZ9.DkUl80JHl3OeYlUA6VMWyyGbR1tc4N1seqN8jmnlMkI";
+
+// Ion.defaultAccessToken = "";
 
 interface disasterInfo {
   dId: number;
@@ -120,6 +121,7 @@ const EarthCesium = () => {
       
       const loadData = async () => {
         try{
+          const pinImage = new PinBuilder();
           const res = await axios('https://worldisaster.com/api/oldDisasters');
           const data = await res.data;
           data.forEach((item:disasterInfo,index:number)=>{
@@ -128,13 +130,13 @@ const EarthCesium = () => {
             let longitude = item.dCountryLongitude;
             viewer.entities.add({
               position: Cartesian3.fromDegrees(longitude, latitude),
-              // billboard: {
-              //   image: pinImage.fromText(`${item.dType}`,getColorForDisasterType(item.dType), 96).toDataURL(),
-              // },
-              point: {
-                pixelSize: 20,
-                color: getColorForDisasterType(item.dType),
+              billboard: {
+                image: pinImage.fromColor(getColorForDisasterType(item.dType), 48).toDataURL(),
               },
+              // point: {
+              //   pixelSize: 20,
+              //   color: getColorForDisasterType(item.dType),
+              // },
               label: {
                 Type: item.dType,
                 country: item.dCountry,
