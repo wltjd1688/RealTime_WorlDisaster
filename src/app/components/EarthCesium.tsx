@@ -4,6 +4,7 @@ import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImag
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
+import { Clicker_Script } from 'next/font/google';
 
 // Ion.defaultAccessToken = "";
 
@@ -25,7 +26,7 @@ const EarthCesium = () => {
   const viewerRef = useRef<Viewer|null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<disasterInfo|null>(null);
-  const [totalData, setTotalData] = useState<disasterInfo[]>([]);
+  const [receiveData, setReciveData] = useState<disasterInfo[]>([]);
 
   function getColorForDisasterType(type:any) {
     switch (type) {
@@ -204,7 +205,6 @@ useEffect(() => {
     try{
       const res = await axios('https://worldisaster.com/api/oldDisasters');
       const data = await res.data;
-      setTotalData(data);
       data.forEach((item:disasterInfo)=>{
         if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number'){
         let latitude = item.dLatitude;
@@ -243,7 +243,7 @@ useEffect(() => {
       console.log('데이터 로드 실패', err);
     }
   }
-  
+
   loadData(viewer);
 
   viewer.dataSources.add(customDataSource);
@@ -252,28 +252,39 @@ useEffect(() => {
 
 useEffect(() => {
   const viewer = viewerRef.current;
-  if(!viewer || !viewer.scene || !viewer.camera) {
+  if (!viewer || !viewer.scene || !viewer.camera) {
     return;
-  };
+  }
+
   const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
-  handler.setInputAction((click:any)=>{
+  handler.setInputAction((click:any) => {
     const pickedObject = viewer.scene.pick(click.position);
-    if (defined(pickedObject) && pickedObject.id) {
-      const pickedEntity = pickedObject.id;
-      if (pickedEntity.properties){
-        const entityData = pickedEntity.properties.getValue();
-        showModal(entityData);
-      }
+    if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties) {
+      const properties = pickedObject.id.properties;
+      const disasterData = {
+        dId: properties._dID?._value,
+        dType: properties._dType?._value,
+        dCountry: properties._dCountry?._value,
+        dStatus: properties._dStatus?._value,
+        dDate: properties._dDate?._value,
+        dCountryLatitude: properties._dCountryLatitude?._value,
+        dCountryLongitude: properties._dCountryLongitude?._value,
+        dLatitude: properties._dLatitude?._value,
+        dLongitude: properties._dLongitude?._value,
+      };
+      setSelectedEntity(disasterData);
+      setModalVisible(true);
     }
-  },ScreenSpaceEventType.LEFT_CLICK);
+  }, ScreenSpaceEventType.LEFT_CLICK);
 
   return () => {
     handler.destroy();
   };
-},[]);
+}, [viewerRef.current]);
 
 const showModal = (pickedEntity:any) => {
   setSelectedEntity(pickedEntity);
+  console.log(pickedEntity)
   setModalVisible(true);
 }
 
@@ -282,11 +293,11 @@ const ModalComponent = () =>{
     return null;
   }
   return (
-    <div style={{ position: 'absolute', top: '10%', right: '10%', backgroundColor: 'white', padding: '20px', zIndex: 100, fontStyle:"black" }}>
+    <div style={{ position: 'absolute', top: '10%', right: '10%', backgroundColor: 'white', padding: '20px', zIndex: 100, color:"black" }}>
       <h3>Disaster Details</h3>
       <p>Type: {selectedEntity.dType}</p>
       <p>Date: {selectedEntity.dDate}</p>
-      <button onClick={() => setModalVisible(false)}>Close</button>
+      <button onClick={() => {setModalVisible(false);setReciveData([])}}>Close</button>
     </div>
   );
 };
