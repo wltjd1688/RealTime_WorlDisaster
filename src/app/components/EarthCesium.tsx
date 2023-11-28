@@ -4,7 +4,6 @@ import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImag
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
-import { Clicker_Script } from 'next/font/google';
 
 // Ion.defaultAccessToken = "";
 
@@ -26,7 +25,6 @@ const EarthCesium = () => {
   const viewerRef = useRef<Viewer|null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<disasterInfo|null>(null);
-  const [receiveData, setReciveData] = useState<disasterInfo[]>([]);
 
   function getColorForDisasterType(type:any) {
     switch (type) {
@@ -89,6 +87,7 @@ const EarthCesium = () => {
         selectionIndicator: false,  // 선택 지시기 비활성화
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
+        // creditContainer: document.createElement("none"), // 스택오버플로우 참고
         // navigationInstructionsInitiallyVisible?: boolean;
         // scene3DOnly?: boolean;
         // shouldAnimate?: boolean;
@@ -156,49 +155,49 @@ useEffect(() => {
 
   const customDataSource = new CustomDataSource('Disasters');
 
-  customDataSource.clustering = new EntityCluster({
-    enabled: true,
-    pixelRange: 30,
-    minimumClusterSize: 2,
-    clusterBillboards: true,
-    clusterLabels: true,
-    clusterPoints: true,
-  });
+  // customDataSource.clustering = new EntityCluster({
+  //   enabled: true,
+  //   pixelRange: 30,
+  //   minimumClusterSize: 2,
+  //   clusterBillboards: true,
+  //   clusterLabels: true,
+  //   clusterPoints: true,
+  // });
 
-  const pinBuilder = new PinBuilder();
-  const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
-  const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
-  const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
-  const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
-  const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
-  const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
-  const singleDigitPins = new Array(10);
-  for (let i = 0; i < singleDigitPins.length; ++i) {
-    singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
-  };
+  // const pinBuilder = new PinBuilder();
+  // const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
+  // const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
+  // const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
+  // const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
+  // const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
+  // const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
+  // const singleDigitPins = new Array(10);
+  // for (let i = 0; i < singleDigitPins.length; ++i) {
+  //   singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
+  // };
 
-  customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
-    let count = clusteredEntities.length;
-      cluster.billboard.show = true;
-      cluster.label.show = false;
-      cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
+  // customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
+  //   let count = clusteredEntities.length;
+  //     cluster.billboard.show = true;
+  //     cluster.label.show = false;
+  //     cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
 
-    if (count >= 50) {
-      cluster.billboard.image = pin50;
-    } else if (count >= 40) {
-      cluster.billboard.image = pin40;
-    } else if (count >= 30) {
-      cluster.billboard.image = pin30;
-    } else if (count >= 20) {
-      cluster.billboard.image = pin20;
-    } else if (count >= 10) {
-      cluster.billboard.image = pin10;
-    } else if (count >= 5) {
-      cluster.billboard.image = pin5;
-    } else {
-      cluster.billboard.image = singleDigitPins[count];
-    }
-  })
+  //   if (count >= 50) {
+  //     cluster.billboard.image = pin50;
+  //   } else if (count >= 40) {
+  //     cluster.billboard.image = pin40;
+  //   } else if (count >= 30) {
+  //     cluster.billboard.image = pin30;
+  //   } else if (count >= 20) {
+  //     cluster.billboard.image = pin20;
+  //   } else if (count >= 10) {
+  //     cluster.billboard.image = pin10;
+  //   } else if (count >= 5) {
+  //     cluster.billboard.image = pin5;
+  //   } else {
+  //     cluster.billboard.image = singleDigitPins[count];
+  //   }
+  // })
 
   // cluster pinBuild
   const loadData = async (viewer:Viewer) => {
@@ -222,7 +221,7 @@ useEffect(() => {
           point: {
             pixelSize: 10,
             color: getColorForDisasterType(item.dType),
-            scaleByDistance: new NearFarScalar(10e3, 8, 10e6, 0.3)
+            scaleByDistance: new NearFarScalar(10e3, 6, 10e6, 0.3)
           },
           // 라벨
           label: {
@@ -230,7 +229,7 @@ useEffect(() => {
             font: '14pt monospace',
             outlineWidth: 2,
             verticalOrigin: VerticalOrigin.BOTTOM,
-            pixelOffset: new Cartesian3(50 + (textlength*3)*1.5, 9, 0),
+            pixelOffset: new Cartesian3(50 + (textlength*3)*1.4, 9, 0),
             translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
             eyeOffset: new Cartesian3(0, 0, -100),
           },
@@ -295,9 +294,14 @@ const ModalComponent = () =>{
   return (
     <div style={{ position: 'absolute', top: '10%', right: '10%', backgroundColor: 'white', padding: '20px', zIndex: 100, color:"black" }}>
       <h3>Disaster Details</h3>
+      <p>Country: {selectedEntity.dCountry}</p>
       <p>Type: {selectedEntity.dType}</p>
       <p>Date: {selectedEntity.dDate}</p>
-      <button onClick={() => {setModalVisible(false);setReciveData([])}}>Close</button>
+      <div className='w-full items-center flex'>
+        <button className="mx-auto inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg" onClick={() => {setModalVisible(false)}}>
+          Close
+        </button>
+      </div>
     </div>
   );
 };
