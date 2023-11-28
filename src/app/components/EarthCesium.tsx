@@ -1,14 +1,16 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, VerticalOrigin, NearFarScalar} from 'cesium';
+import { Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster , IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, VerticalOrigin, NearFarScalar, ScreenSpaceEventHandler, defined, ScreenSpaceEventType } from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
+
 // Ion.defaultAccessToken = "";
+
 interface disasterInfo {
-  dId: number;
+  dId: string;
   dType: string;
-  d: string;
+  dCountry: string;
   dStatus: string;
   dDate: string;
   dCountryLatitude: number|null;
@@ -16,13 +18,15 @@ interface disasterInfo {
   dLatitude: number;
   dLongitude: number;
 }
-interface EntityClusterExtension {
-  cluster: EntityCluster;
-}
+
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
   const viewerRef = useRef<Viewer|null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedEntity, setSelectedEntity] = useState<disasterInfo|null>(null);
+  const [receiveData, setReciveData] = useState<disasterInfo[]>([]);
+
   function getColorForDisasterType(type:any) {
     switch (type) {
       case "Tropical Cyclone":
@@ -69,6 +73,7 @@ const EarthCesium = () => {
         return Color.WHITE;
     }
   }
+
   useEffect(() => {
     if (typeof window !== 'undefined' && cesiumContainer.current) {
       let viewer = new Viewer(cesiumContainer.current,{
@@ -83,6 +88,7 @@ const EarthCesium = () => {
         selectionIndicator: false,  // 선택 지시기 비활성화
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
+        creditContainer: document.createElement("none"), // 스택오버플로우 참고
         // navigationInstructionsInitiallyVisible?: boolean;
         // scene3DOnly?: boolean;
         // shouldAnimate?: boolean;
@@ -120,7 +126,9 @@ const EarthCesium = () => {
         // depthPlaneEllipsoidOffset?: number;
         // msaaSamples?: number;
       });
+
     viewerRef.current = viewer;  
+
     // layout 추가
     createWorldImageryAsync({
       style: IonWorldImageryStyle.AERIAL_WITH_LABELS
@@ -130,6 +138,7 @@ const EarthCesium = () => {
     }).catch((err) => {
       console.log(`layout추가 실패: ${err}`);
     });
+
     // viewer 정리 로직 추가
     return () => {
       if (viewer && viewer.destroy) {
@@ -138,11 +147,13 @@ const EarthCesium = () => {
     };
   }
 },[]);
+
 useEffect(() => {
   const viewer = viewerRef.current;
   if(!viewer || !viewer.scene || !viewer.camera) {
     return;
   };
+
   const customDataSource = new CustomDataSource('Disasters');
 
   customDataSource.clustering = new EntityCluster({
@@ -200,6 +211,7 @@ useEffect(() => {
         let longitude = item.dLongitude;
         let textlength = item.dType.length;
         customDataSource.entities.add({
+          id: item.dId,
           // 데이터 좌표 넣기
           position: Cartesian3.fromDegrees(longitude, latitude),
           // 표지판 이미지
@@ -222,6 +234,7 @@ useEffect(() => {
             translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
             eyeOffset: new Cartesian3(0, 0, -100),
           },
+          properties: item,
         });
         }
       });
@@ -230,26 +243,88 @@ useEffect(() => {
       console.log('데이터 로드 실패', err);
     }
   }
+
   loadData(viewer);
+
   viewer.dataSources.add(customDataSource);
+
 },[]);
+
+useEffect(() => {
+  const viewer = viewerRef.current;
+  if (!viewer || !viewer.scene || !viewer.camera) {
+    return;
+  }
+
+  const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
+  handler.setInputAction((click:any) => {
+    const pickedObject = viewer.scene.pick(click.position);
+    if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties) {
+      const properties = pickedObject.id.properties;
+      const disasterData = {
+        dId: properties._dID?._value,
+        dType: properties._dType?._value,
+        dCountry: properties._dCountry?._value,
+        dStatus: properties._dStatus?._value,
+        dDate: properties._dDate?._value,
+        dCountryLatitude: properties._dCountryLatitude?._value,
+        dCountryLongitude: properties._dCountryLongitude?._value,
+        dLatitude: properties._dLatitude?._value,
+        dLongitude: properties._dLongitude?._value,
+      };
+      setSelectedEntity(disasterData);
+      setModalVisible(true);
+    }
+  }, ScreenSpaceEventType.LEFT_CLICK);
+
+  return () => {
+    handler.destroy();
+  };
+}, [viewerRef.current]);
+
+const showModal = (pickedEntity:any) => {
+  setSelectedEntity(pickedEntity);
+  console.log(pickedEntity)
+  setModalVisible(true);
+}
+
+const ModalComponent = () =>{
+  if (!modalVisible || !selectedEntity) {
+    return null;
+  }
+  return (
+    <div style={{ position: 'absolute', top: '10%', right: '10%', backgroundColor: 'white', padding: '20px', zIndex: 100, color:"black" }}>
+      <h3>Disaster Details</h3>
+      <p>Type: {selectedEntity.dType}</p>
+      <p>Date: {selectedEntity.dDate}</p>
+      <button onClick={() => {setModalVisible(false);setReciveData([])}}>Close</button>
+    </div>
+  );
+};
+
 useEffect(() => {
   const viewer = viewerRef.current;
   if(!viewer || !viewer.scene || !viewer.camera) {
     return;
   };
+
   const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
       const cartographicPosition = viewer.camera.positionCartographic;
       const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
       const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
       router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
   });
+
   return () => {
     moveEndListener();
   };
 }, [router]);
+
   return (
-    <div id="cesiumContainer" ref={cesiumContainer}></div>
+    <div id="cesiumContainer" ref={cesiumContainer}>
+      <ModalComponent />
+    </div>
   );
 };
+
 export default EarthCesium;
