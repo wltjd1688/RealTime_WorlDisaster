@@ -1,7 +1,7 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
 import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, VerticalOrigin, NearFarScalar, ScreenSpaceEventHandler, defined, ScreenSpaceEventType} from 'cesium';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
 
@@ -17,14 +17,18 @@ interface disasterInfo {
   dCountryLongitude: number|null;
   dLatitude: number;
   dLongitude: number;
+  objectId:number;
 }
 
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
+  const search = useSearchParams();
   const viewerRef = useRef<Viewer|null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<disasterInfo|null>(null);
+  const [isUserInput, setIsUserInput] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(18090749.93102962);
 
   function getColorForDisasterType(type:any) {
     switch (type) {
@@ -84,10 +88,10 @@ const EarthCesium = () => {
         homeButton: true,  // 홈 버튼 비활성화
         infoBox: false,  // 정보 박스 비활성화
         sceneModePicker: false,  // 장면 모드 선택기 비활성화
-        selectionIndicator: false,  // 선택 지시기 비활성화
+        selectionIndicator: true,  // 선택 지시기 비활성화
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
-        // creditContainer: document.createElement("none"), // 스택오버플로우 참고
+        creditContainer: document.createElement("none"), // 스택오버플로우 참고
         // navigationInstructionsInitiallyVisible?: boolean;
         // scene3DOnly?: boolean;
         // shouldAnimate?: boolean;
@@ -125,6 +129,10 @@ const EarthCesium = () => {
         // depthPlaneEllipsoidOffset?: number;
         // msaaSamples?: number;
       });
+    viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
+    viewer.scene.screenSpaceCameraController.maximumZoomDistance = 18090749.93102962; // 최대 확대 거리 (미터 단위)
+    viewer.scene.screenSpaceCameraController.enableTilt = true; // 기울기
+      
 
     viewerRef.current = viewer;  
 
@@ -157,7 +165,7 @@ useEffect(() => {
 
   // customDataSource.clustering = new EntityCluster({
   //   enabled: true,
-  //   pixelRange: 30,
+  //   pixelRange: 100,
   //   minimumClusterSize: 2,
   //   clusterBillboards: true,
   //   clusterLabels: true,
@@ -219,20 +227,20 @@ useEffect(() => {
           // },
           //포인트 이미지
           point: {
-            pixelSize: 10,
+            pixelSize: 1,
             color: getColorForDisasterType(item.dType),
-            scaleByDistance: new NearFarScalar(10e3, 6, 10e6, 0.3)
+            scaleByDistance: new NearFarScalar(250000, 50, 10e6, 2)
           },
           // 라벨
-          label: {
-            text: item.dType,
-            font: '14pt monospace',
-            outlineWidth: 2,
-            verticalOrigin: VerticalOrigin.BOTTOM,
-            pixelOffset: new Cartesian3(50 + (textlength*3)*1.4, 9, 0),
-            translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
-            eyeOffset: new Cartesian3(0, 0, -100),
-          },
+          // label: {
+          //   text: item.dType,
+          //   font: '14pt monospace',
+          //   outlineWidth: 2,
+          //   verticalOrigin: VerticalOrigin.BOTTOM,
+          //   pixelOffset: new Cartesian3(50 + (textlength*3)*1.4, 9, 0),
+          //   translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
+          //   eyeOffset: new Cartesian3(0, 0, -100),
+          // },
           properties: item,
         });
         }
@@ -270,6 +278,7 @@ useEffect(() => {
         dCountryLongitude: properties._dCountryLongitude?._value,
         dLatitude: properties._dLatitude?._value,
         dLongitude: properties._dLongitude?._value,
+        objectId: properties._objectId?._value,
       };
       setSelectedEntity(disasterData);
       setModalVisible(true);
@@ -297,6 +306,7 @@ const ModalComponent = () =>{
       <p>Country: {selectedEntity.dCountry}</p>
       <p>Type: {selectedEntity.dType}</p>
       <p>Date: {selectedEntity.dDate}</p>
+      <p>드가자: {selectedEntity.objectId}</p>
       <div className='w-full items-center flex'>
         <button className="mx-auto inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg" onClick={() => {setModalVisible(false)}}>
           Close
@@ -313,9 +323,15 @@ useEffect(() => {
   };
 
   const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
+      if (!isUserInput) {
+        setIsUserInput(true);
+        return;
+      }
       const cartographicPosition = viewer.camera.positionCartographic;
       const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
       const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
+      const zoomLv = viewer.camera.getMagnitude();
+      setZoomLevel(zoomLv);
       router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
   });
 
@@ -323,6 +339,25 @@ useEffect(() => {
     moveEndListener();
   };
 }, [router]);
+
+useEffect(() => {
+  const viewer = viewerRef.current;
+  const lon = search.get('lon');
+  const lat = search.get('lat');
+  if(!viewer || !viewer.scene || !viewer.camera) {
+    return;
+  };
+  if (lon && lat && viewer && viewer.scene && viewer.camera) {
+    setIsUserInput(false);
+    viewer.camera.flyTo({
+      destination: Cartesian3.fromDegrees(Number(lon), Number(lat), zoomLevel),
+      complete: () => {
+        setIsUserInput(true);
+      }
+    });
+  }
+},[router]);
+
 
   return (
     <div id="cesiumContainer" ref={cesiumContainer}>
