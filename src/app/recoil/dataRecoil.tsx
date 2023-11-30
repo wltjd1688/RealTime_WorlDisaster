@@ -1,6 +1,6 @@
-"use client";
-import React from 'react';
-import { RecoilRoot, atom } from 'recoil';
+import React, { useEffect } from 'react';
+import axios from 'axios';
+import { atom, useRecoilState, useRecoilValueLoadable } from 'recoil';
 
 export interface DataType{
   objectId: number;
@@ -22,7 +22,3 @@ export const dataState = atom<DataType[]>({
   key: 'dataState',
   default: [] as DataType[],
 });
-
-export default function RecoidContextProvider({ children }: { children: React.ReactNode }) {
-  return <RecoilRoot>{children}</RecoilRoot>;
-}

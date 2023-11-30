@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import axios from 'axios';
 import DetailLeftSidebar from './DetailLeftSidebar';
+import {atom, useRecoilState, } from 'recoil';
+import {dataState } from '../recoil/dataRecoil';
 
 interface disasterInfoHover {
   dId: string;
@@ -35,6 +37,8 @@ const EarthCesium = () => {
   const [isUserInput, setIsUserInput] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(18090749.93102962);
   const [showSidebar, setShowSidebar] = useState<Boolean>(false);
+  const [data,setData] = useRecoilState(dataState);
+  const [dIdValue, setDIdValue] = useState<string>('');
 
   // 디테일 사이드바 토글
   const toggleSidebar = () => {
@@ -223,16 +227,15 @@ useEffect(() => {
   // 데이터 받아오기
   const loadData = async (viewer:Viewer) => {
     try{
-      const res = await axios('https://worldisaster.com/api/oldDisasters');
-      // 필터링된 데이터를 받아올 수 있게 컴포넌트로 바꿀꺼임
-      const data = await res.data;
-      data.forEach((item:disasterInfo)=>{
+      const response = await axios.get('https://worldisaster.com/api/oldDisasters');
+      const data = response.data; // API 응답에서 데이터 추출
+      data.forEach((item:any)=>{
         if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number'){
         let latitude = item.dLatitude;
         let longitude = item.dLongitude;
         let textlength = item.dType.length;
         customDataSource.entities.add({
-          id: item.dId,
+          id: item.dID,
           // 데이터 좌표 넣기
           position: Cartesian3.fromDegrees(longitude, latitude),
           // 표지판 이미지
@@ -260,6 +263,7 @@ useEffect(() => {
         });
         }
       });
+      setData(data);
       console.log(`데이터 로드 성공`);
     } catch(err) {
       console.log('데이터 로드 실패', err);
@@ -277,8 +281,6 @@ useEffect(() => {
   if (!viewer || !viewer.scene || !viewer.camera) {
     return;
   }
-
-  let originalPinSize = 0;
 
   const tooltip = document.createElement('div') as HTMLDivElement;
   tooltip.style.display = 'none';
@@ -338,7 +340,7 @@ useEffect(() => {
       };
       const camaraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
       router.push(`/earth?lon=${disasterData.dLongitude}&lat=${disasterData.dLatitude}&height=${camaraHeight}&did=${disasterData.dId}`, undefined);
-
+      setDIdValue(disasterData.dId);
     }
   }, ScreenSpaceEventType.LEFT_CLICK);
 
@@ -390,6 +392,7 @@ useEffect(() => {
       duration: 1,
       complete: () => {
         if (detail){
+          setDIdValue(detail);
           setShowSidebar(true);
         }
       }
@@ -404,7 +407,7 @@ useEffect(() => {
       <div id="cesiumContainer" ref={cesiumContainer}>
         {/* <ModalComponent /> */}
       </div>
-      {showSidebar && <DetailLeftSidebar onClose={toggleSidebar} />}
+      {showSidebar && <DetailLeftSidebar onClose={toggleSidebar} dID={dIdValue} />}
     </>
   );
 };
