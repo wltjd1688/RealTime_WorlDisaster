@@ -64,6 +64,7 @@ export const Navbar = () => {
         <div className='flex items-center gap-3'>
           {isLoggedIn ? (
             <>
+              <span className='text-xl'><Link href="/support">후원</Link></span>
               <span className='text-xl'><Link href="/mypage">내 계정</Link></span>
               <span className='text-xl'>
                 <a onClick={handleLogout} style={{ cursor: 'pointer' }}>로그아웃</a>
