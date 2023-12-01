@@ -30,6 +30,7 @@
     "react-dom": "^18",
     "react-globe.gl": "^2.27.0",
     "resium": "^1.17.2",
+    "socket.io-client": "^4.7.2",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster, IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, VerticalOrigin, NearFarScalar, ScreenSpaceEventHandler, defined, ScreenSpaceEventType } from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
+import { io } from 'socket.io-client';
 import axios from 'axios';
 
 
@@ -12,8 +13,8 @@ interface disasterInfo {
   dCountry: string;
   dStatus: string;
   dDate: string;
-  dCountryLatitude: number|null;
-  dCountryLongitude: number|null;
+  dCountryLatitude: number | null;
+  dCountryLongitude: number | null;
   dLatitude: number;
   dLongitude: number;
 }
@@ -21,11 +22,11 @@ interface disasterInfo {
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
-  const viewerRef = useRef<Viewer|null>(null);
+  const viewerRef = useRef<Viewer | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedEntity, setSelectedEntity] = useState<disasterInfo|null>(null);
+  const [selectedEntity, setSelectedEntity] = useState<disasterInfo | null>(null);
 
-  function getColorForDisasterType(type:any) {
+  function getColorForDisasterType(type: any) {
     switch (type) {
       case "Tropical Cyclone":
         return Color.RED;
@@ -66,14 +67,14 @@ const EarthCesium = () => {
       case 'Extratropical Cyclone':
         return Color.DARKORCHID;
       case 'Heat Wave':
-        return Color.RED;      
+        return Color.RED;
       default:
         return Color.WHITE;
     }
   }
   useEffect(() => {
     if (typeof window !== 'undefined' && cesiumContainer.current) {
-      let viewer = new Viewer(cesiumContainer.current,{
+      let viewer = new Viewer(cesiumContainer.current, {
         animation: false,  // 애니메이션 위젯 비활성화
         baseLayerPicker: false,  // 베이스 레이어 선택기 비활성화
         fullscreenButton: false,  // 전체 화면 버튼 비활성화
@@ -124,194 +125,258 @@ const EarthCesium = () => {
         // msaaSamples?: number;
       });
 
-    viewerRef.current = viewer; 
+      viewerRef.current = viewer;
 
-    // layout 추가
-    createWorldImageryAsync({
-      style: IonWorldImageryStyle.AERIAL_WITH_LABELS
-    }).then((imageryProvider) => {
-      viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
-      console.log(`layout추가 성공`)
-    }).catch((err) => {
-      console.log(`layout추가 실패: ${err}`);
-    });
-
-    // viewer 정리 로직 추가
-    return () => {
-      if (viewer && viewer.destroy) {
-        viewer.destroy();        
-      }
-    };
-  }
-},[]);
-
-
-useEffect(() => {
-  const viewer = viewerRef.current;
-  if(!viewer || !viewer.scene || !viewer.camera) {
-    return;
-  };
-
-  const customDataSource = new CustomDataSource('Disasters');
-
-  // customDataSource.clustering = new EntityCluster({
-  //   enabled: true,
-  //   pixelRange: 30,
-  //   minimumClusterSize: 2,
-  //   clusterBillboards: true,
-  //   clusterLabels: true,
-  //   clusterPoints: true,
-  // });
-
-
-  // const pinBuilder = new PinBuilder();
-  // const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
-  // const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
-  // const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
-  // const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
-  // const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
-  // const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
-  // const singleDigitPins = new Array(10);
-  // for (let i = 0; i < singleDigitPins.length; ++i) {
-  //   singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
-  // };
-
-
-  // customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
-  //   let count = clusteredEntities.length;
-  //     cluster.billboard.show = true;
-  //     cluster.label.show = false;
-  //     cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
-
-
-  //   if (count >= 50) {
-  //     cluster.billboard.image = pin50;
-  //   } else if (count >= 40) {
-  //     cluster.billboard.image = pin40;
-  //   } else if (count >= 30) {
-  //     cluster.billboard.image = pin30;
-  //   } else if (count >= 20) {
-  //     cluster.billboard.image = pin20;
-  //   } else if (count >= 10) {
-  //     cluster.billboard.image = pin10;
-  //   } else if (count >= 5) {
-  //     cluster.billboard.image = pin5;
-  //   } else {
-  //     cluster.billboard.image = singleDigitPins[count];
-  //   }
-  // })
-
-  const loadData = async (viewer:Viewer) => {
-    try{
-      const res = await axios('https://worldisaster.com/api/oldDisasters');
-      const data = await res.data;
-      data.forEach((item:disasterInfo)=>{
-        if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number'){
-        let latitude = item.dLatitude;
-        let longitude = item.dLongitude;
-        let textlength = item.dType.length;
-        customDataSource.entities.add({
-          id: item.dId,
-          // 데이터 좌표 넣기
-          position: Cartesian3.fromDegrees(longitude, latitude),
-          //포인트 이미지
-          point: {
-            pixelSize: 10,
-            color: getColorForDisasterType(item.dType),
-            scaleByDistance: new NearFarScalar(10e3, 6, 10e6, 0.9)
-          },
-          // 라벨
-          // label: {
-          //   text: item.dType,
-          //   font: '14pt monospace',
-          //   outlineWidth: 2,
-          //   verticalOrigin: VerticalOrigin.BOTTOM,
-          //   pixelOffset: new Cartesian3(50 + (textlength*3)*1.4, 9, 0),
-          //   translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
-          //   eyeOffset: new Cartesian3(0, 0, -100),
-          // },
-          properties: item,
-        });
-        }
+      // layout 추가
+      createWorldImageryAsync({
+        style: IonWorldImageryStyle.AERIAL_WITH_LABELS
+      }).then((imageryProvider) => {
+        viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
+        console.log(`layout추가 성공`)
+      }).catch((err) => {
+        console.log(`layout추가 실패: ${err}`);
       });
-      console.log(`데이터 로드 성공`);
-    } catch(err) {
-      console.log('데이터 로드 실패', err);
-    }
-  }
 
-  loadData(viewer);
-
-  viewer.dataSources.add(customDataSource);
-},[]);
-
-useEffect(() => {
-  const viewer = viewerRef.current;
-
-  if (!viewer || !viewer.scene || !viewer.camera) {
-    return;
-  }
-
-  const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
-
-  handler.setInputAction((click:any) => {
-    const pickedObject = viewer.scene.pick(click.position);
-
-    if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties) {
-      const properties = pickedObject.id.properties;
-      const disasterData = {
-        dId: properties._dID?._value,
-        dType: properties._dType?._value,
-        dCountry: properties._dCountry?._value,
-        dStatus: properties._dStatus?._value,
-        dDate: properties._dDate?._value,
-        dCountryLatitude: properties._dCountryLatitude?._value,
-        dCountryLongitude: properties._dCountryLongitude?._value,
-        dLatitude: properties._dLatitude?._value,
-        dLongitude: properties._dLongitude?._value,
+      // viewer 정리 로직 추가
+      return () => {
+        if (viewer && viewer.destroy) {
+          viewer.destroy();
+        }
       };
-      setSelectedEntity(disasterData);
-      setModalVisible(true);
     }
-  }, ScreenSpaceEventType.LEFT_CLICK);
-  return () => {
-    handler.destroy();
-  };
-}, [viewerRef.current]);
+  }, []);
 
-const ModalComponent = () =>{
-  if (!modalVisible || !selectedEntity) {
-    return null;
-  }
-  return (
-    <div style={{ position: 'absolute', top: '10%', right: '10%', backgroundColor: 'white', padding: '20px', zIndex: 100, color:"black" }}>
-      <h3>Disaster Details</h3>
-      <p>Country: {selectedEntity.dCountry}</p>
-      <p>Type: {selectedEntity.dType}</p>
-      <p>Date: {selectedEntity.dDate}</p>
-      <div className='w-full items-center flex'>
-        <button className="mx-auto inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg" onClick={() => {setModalVisible(false)}}>
-          Close
-        </button>
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !viewer.scene || !viewer.camera) {
+      return;
+    };
+
+    const customDataSource = new CustomDataSource('Disasters');
+
+    // customDataSource.clustering = new EntityCluster({
+    //   enabled: true,
+    //   pixelRange: 30,
+    //   minimumClusterSize: 2,
+    //   clusterBillboards: true,
+    //   clusterLabels: true,
+    //   clusterPoints: true,
+    // });
+
+
+    // const pinBuilder = new PinBuilder();
+    // const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
+    // const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
+    // const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
+    // const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
+    // const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
+    // const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
+    // const singleDigitPins = new Array(10);
+    // for (let i = 0; i < singleDigitPins.length; ++i) {
+    //   singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
+    // };
+
+
+    // customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
+    //   let count = clusteredEntities.length;
+    //     cluster.billboard.show = true;
+    //     cluster.label.show = false;
+    //     cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
+
+
+    //   if (count >= 50) {
+    //     cluster.billboard.image = pin50;
+    //   } else if (count >= 40) {
+    //     cluster.billboard.image = pin40;
+    //   } else if (count >= 30) {
+    //     cluster.billboard.image = pin30;
+    //   } else if (count >= 20) {
+    //     cluster.billboard.image = pin20;
+    //   } else if (count >= 10) {
+    //     cluster.billboard.image = pin10;
+    //   } else if (count >= 5) {
+    //     cluster.billboard.image = pin5;
+    //   } else {
+    //     cluster.billboard.image = singleDigitPins[count];
+    //   }
+    // })
+
+    const loadData = async (viewer: Viewer) => {
+      try {
+        const res = await axios('https://worldisaster.com/api/oldDisasters');
+        const data = await res.data;
+        data.forEach((item: disasterInfo) => {
+          if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number') {
+            let latitude = item.dLatitude;
+            let longitude = item.dLongitude;
+            let textlength = item.dType.length;
+            customDataSource.entities.add({
+              id: item.dId,
+              // 데이터 좌표 넣기
+              position: Cartesian3.fromDegrees(longitude, latitude),
+              //포인트 이미지
+              point: {
+                pixelSize: 10,
+                color: getColorForDisasterType(item.dType),
+                scaleByDistance: new NearFarScalar(10e3, 6, 10e6, 0.9)
+              },
+              // 라벨
+              // label: {
+              //   text: item.dType,
+              //   font: '14pt monospace',
+              //   outlineWidth: 2,
+              //   verticalOrigin: VerticalOrigin.BOTTOM,
+              //   pixelOffset: new Cartesian3(50 + (textlength*3)*1.4, 9, 0),
+              //   translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
+              //   eyeOffset: new Cartesian3(0, 0, -100),
+              // },
+              properties: item,
+            });
+          }
+        });
+        console.log(`데이터 로드 성공`);
+      } catch (err) {
+        console.log('데이터 로드 실패', err);
+      }
+    }
+
+    loadData(viewer);
+
+    viewer.dataSources.add(customDataSource);
+  }, []);
+
+  useEffect(() => {
+    const viewer = viewerRef.current;
+
+    if (!viewer || !viewer.scene || !viewer.camera) {
+      return;
+    }
+
+    const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
+
+    handler.setInputAction((click: any) => {
+      const pickedObject = viewer.scene.pick(click.position);
+
+      if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties) {
+        const properties = pickedObject.id.properties;
+        const disasterData = {
+          dId: properties._dID?._value,
+          dType: properties._dType?._value,
+          dCountry: properties._dCountry?._value,
+          dStatus: properties._dStatus?._value,
+          dDate: properties._dDate?._value,
+          dCountryLatitude: properties._dCountryLatitude?._value,
+          dCountryLongitude: properties._dCountryLongitude?._value,
+          dLatitude: properties._dLatitude?._value,
+          dLongitude: properties._dLongitude?._value,
+        };
+        setSelectedEntity(disasterData);
+        setModalVisible(true);
+      }
+    }, ScreenSpaceEventType.LEFT_CLICK);
+    return () => {
+      handler.destroy();
+    };
+  }, [viewerRef.current]);
+
+  const ModalComponent = () => {
+    if (!modalVisible || !selectedEntity) {
+      return null;
+    }
+    return (
+      <div style={{ position: 'absolute', top: '10%', right: '10%', backgroundColor: 'white', padding: '20px', zIndex: 100, color: "black" }}>
+        <h3>Disaster Details</h3>
+        <p>Country: {selectedEntity.dCountry}</p>
+        <p>Type: {selectedEntity.dType}</p>
+        <p>Date: {selectedEntity.dDate}</p>
+        <div className='w-full items-center flex'>
+          <button className="mx-auto inline-flex text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-lg" onClick={() => { setModalVisible(false) }}>
+            Close
+          </button>
+        </div>
       </div>
-    </div>
-  );
-};
-useEffect(() => {
-  const viewer = viewerRef.current;
-  if(!viewer || !viewer.scene || !viewer.camera) {
-    return;
+    );
   };
-  const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !viewer.scene || !viewer.camera) {
+      return;
+    };
+    const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
       const cartographicPosition = viewer.camera.positionCartographic;
       const longitude = Math.toDegrees(cartographicPosition.longitude).toFixed(6);
       const latitude = Math.toDegrees(cartographicPosition.latitude).toFixed(6);
       router.push(`/earth?lon=${longitude}&lat=${latitude}`, undefined);
-  });
-  return () => {
-    moveEndListener();
-  };
-}, [router]);
+    });
+    return () => {
+      moveEndListener();
+    };
+  }, [router]);
+
+  useEffect(() => { // 알림용 웹소켓 (테스트)
+
+    const socket = io('https://worldisaster.com/alerts', {
+      withCredentials: true, // CORS 문제를 해결하기 위한 옵션
+      path: '/socket.io', // Sockets.io 라이브러리의 표준값
+      transports: ['websocket'], // 트랜스포트 방식을 "websocket"으로 지정
+    });
+
+    socket.on('connect', () => {
+      console.log('Alerts 웹소켓 연결 성공');
+    });
+
+    socket.on('disaster-alert', (message) => {
+      console.log(message);
+      // 메시지를 상태에 저장하거나 다른 처리를 할 수 있습니다.
+      // 예: setReciveData(prevData => [...prevData, message]);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+
+    // 컴포넌트 언마운트 시 소켓 연결 해제
+    return () => {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    };
+
+  }, []); // 빈 의존성 배열로 마운트 시 한 번만 실행
+
+  useEffect(() => { // 채팅용 웹소켓 (테스트)
+
+    // 소켓 연결 설정
+    const socket = io('https://worldisaster.com/chats', {
+      withCredentials: true, // CORS 문제를 해결하기 위한 옵션
+      path: '/socket.io',
+      transports: ['websocket'], // 트랜스포트 방식을 "websocket"으로 지정
+    }); // 서버 주소 변경 필요
+
+    socket.on('connect', () => {
+      console.log('Chats 웹소켓 연결 성공');
+    });
+
+    socket.emit('joinRoom', '101'); // 101번 방 조인
+
+    socket.on('newMessage', (data) => { // 새로운 메시지 발생시 처리
+      console.log('Message from server:', data);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from the server.');
+    });
+
+    // 컴포넌트 언마운트 시 소켓 연결 해제
+    return () => {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    };
+
+  }, []); // 빈 의존성 배열로 마운트 시 한 번만 실행
+
   return (
     <div id="cesiumContainer" ref={cesiumContainer}>
       <ModalComponent />
