@@ -41,6 +41,22 @@ nav.with-shadow {
   @apply rounded-3xl bg-primary-500 px-8 py-2 !text-small-regular text-light-1 max-xs:w-full !important;
 }
 
+.cardcover {
+  width: 70%;
+  height: 100%;
+}
+
+.card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #5c5c7b;
+  background-color: #CCE3FD;
+  border-radius: 12px;
+  padding: 20px;
+}
+
 @layer utilities {
   .css-invert {
     @apply invert-[50%] brightness-200;
