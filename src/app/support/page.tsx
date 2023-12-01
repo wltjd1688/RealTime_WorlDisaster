@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { NextUIProvider, Card, CardBody, Autocomplete, AutocompleteItem, Input, Button } from "@nextui-org/react";
 import nations from "../constants/nations";
 import axios from "axios";
@@ -14,6 +14,24 @@ interface User {
 }
 
 const Support: React.FC = () => {
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = Cookies.get('access-token');
+        await axios.get('https://worldisaster.com/api/support', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            withCredentials: true,
+          }
+        });
+      } catch (error) {
+        console.error('데이터 로드 실패', error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const token = Cookies.get('access-token');
     const [DId, setDId] = useState('');
@@ -57,7 +75,7 @@ const Support: React.FC = () => {
 
                   <CardBody className="w-full mx-auto py-3 gap-5 max-w-md h-96">
                     <div className="card">
-                        후원할 지역의 상세정보 보여주기
+                      후원할 지역의 상세정보 보여주기
                     </div>
                   </CardBody>
 
@@ -70,7 +88,7 @@ const Support: React.FC = () => {
                     >
                       {nations.map((nation) => (
                         <AutocompleteItem key={nation.value} value={nation.value} className="text-black">
-                            {nation.label}
+                          {nation.label}
                         </AutocompleteItem>
                       ))}
                     </Autocomplete>
@@ -79,32 +97,32 @@ const Support: React.FC = () => {
                       placeholder="0.00"
                       labelPlacement="outside"
                       startContent={
-                          <div className="pointer-events-none flex items-center">
-                              <span className="text-default-400 text-small">$</span>
-                          </div>
+                        <div className="pointer-events-none flex items-center">
+                          <span className="text-default-400 text-small">$</span>
+                        </div>
                       }
                       endContent={
-                          <div className="flex items-center">
-                              <label className="sr-only" htmlFor="currency">
-                                  Currency
-                              </label>
-                              <select
-                                  aria-label="통화 선택"
-                                  className="outline-none border-0 bg-transparent text-default-400 text-small"
-                                  id="currency"
-                                  name="currency"
-                              >
-                                  <option>USD</option>
-                                  <option>ARS</option>
-                                  <option>EUR</option>
-                              </select>
-                          </div>
+                        <div className="flex items-center">
+                          <label className="sr-only" htmlFor="currency">
+                            Currency
+                          </label>
+                          <select
+                            aria-label="통화 선택"
+                            className="outline-none border-0 bg-transparent text-default-400 text-small"
+                            id="currency"
+                            name="currency"
+                          >
+                            <option>USD</option>
+                            <option>ARS</option>
+                            <option>EUR</option>
+                          </select>
+                        </div>
                       }
                       type="number"
                     />
 
                     <Button color="primary" onClick={handleButtonClick}>
-                        후원하기
+                      후원하기
                     </Button>
 
                   </CardBody>
