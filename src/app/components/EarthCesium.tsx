@@ -18,10 +18,9 @@ import {
   Ellipsoid, 
   Entity, 
   JulianDate,
-  Quaternion,
   Transforms,
-  Matrix4,
-  Matrix3 } from 'cesium';
+  HeadingPitchRoll,
+  ConstantProperty} from 'cesium';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import DetailLeftSidebar from './DetailLeftSidebar';
@@ -259,6 +258,47 @@ useEffect(() => {
   //   entity.orientation = Quaternion.toHeadingPitchRoll(rotation);
   // }
 
+  function rotateEntity(entity:Entity, viewer:Viewer, item:DataType) {
+    if (!entity.position || !entity.position.getValue) {
+      return; // position이 없다면 함수를 종료
+    }
+  
+    const position = entity.position.getValue(JulianDate.now());
+    if (!position) {
+      return; // position 값이 없다면 함수를 종료
+    }
+  
+    let heading = 0;
+    let pitch = 0;
+    let roll = 0;
+  
+    // item.dStatus에 따른 회전 각도 설정
+    if (item.dStatus === 'ongoing') {
+      // 'ongoing' 상태일 때의 회전 각도
+      heading = 45; // 예시 각도
+      pitch = 45;
+      roll = 45;
+    } else if (item.dStatus === 'real-time') {
+      // 'real-time' 상태일 때의 회전 각도
+      heading = 20; // 예시 각도
+      pitch = 0;
+      roll = 120;
+    }
+    // 여기에 다른 상태에 대한 조건문 추가 가능
+  
+    // heading, pitch, roll을 라디안으로 변환
+    const headingRadians = Math.toRadians(heading);
+    const pitchRadians = Math.toRadians(pitch);
+    const rollRadians = Math.toRadians(roll);
+  
+    // 새로운 orientation을 계산
+    const hpr = new HeadingPitchRoll(headingRadians, pitchRadians, rollRadians);
+    const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
+  
+    // Entity의 orientation 업데이트
+    entity.orientation = new ConstantProperty(orientation);
+  }
+  
   // 데이터 받아오기
   const loadData = async (viewer:Viewer) => {
     try{
@@ -305,7 +345,7 @@ useEffect(() => {
               properties: item,
             });
           }
-          // setModelOrientationToEarthCenter(entityToAdd, viewer, item.dStatus);
+          rotateEntity(entityToAdd, viewer, item);
           customDataSource.entities.add(entityToAdd)
         }
       });
