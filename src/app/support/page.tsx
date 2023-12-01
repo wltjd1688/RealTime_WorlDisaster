@@ -21,7 +21,9 @@ const Support: React.FC = () => {
     try {
       const response = await axios.post(
         'https://worldisaster.com/api/paypal/pay',
-        {},
+        {
+          withCredentials: true, // 쿠키와 인증 정보를 포함
+        },
         {
           headers: {
             DId: DId,
