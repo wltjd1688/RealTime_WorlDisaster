@@ -4,107 +4,117 @@ import React, { useState } from "react";
 import { NextUIProvider, Card, CardBody, Autocomplete, AutocompleteItem, Input, Button } from "@nextui-org/react";
 import nations from "../constants/nations";
 import axios from "axios";
+import Cookies from 'js-cookie';
 import "../globals.css";
 
 interface User {
-  name: string;
-  email: string;
-  provider: string;
+    name: string;
+    email: string;
+    provider: string;
 }
 
 const Support: React.FC = () => {
 
-  const [DId, setDId] = useState('');
-  const [amount, setAmount] = useState(0);
+  const token = Cookies.get('access-token');
+    const [DId, setDId] = useState('');
+    const [amount, setAmount] = useState(0);
 
-  const handleButtonClick = async () => {
-    try {
-      const response = await axios.post(
-        'https://worldisaster.com/api/paypal/pay',
-        {
-          withCredentials: true, // 쿠키와 인증 정보를 포함
-        },
-        {
-          headers: {
-            DId: DId,
-            Amount: amount,
+    const handleButtonClick = async () => {
+      try {
+        const response = await axios.post('https://worldisaster.com/api/support/paypal',
+          {
+            DId,
+            amount,
           },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`, // 헤더에 토큰 추가
+              withCredentials: true, // 쿠키와 인증 정보를 포함
+            },
+          }
+        );
+        const approvalUrl = response.data.approvalUrl;
+        console.log(approvalUrl);
+
+        if (approvalUrl) {
+            window.location.href = approvalUrl; // PayPal로 리디렉션
+        } else {
+            console.error('Approval URL is undefined!');
         }
-      );
-      console.log(response.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
-  return (
-    <>
-      <NextUIProvider>
-        <main className="flex flex-row">
-          <section className="main-container flex-1">
-            <div className="cardcover">
-              <Card className="flex flex-row px-3 py-10">
+      } catch (error) {
+          console.error('Error: ', error);
+      }
+    };
 
-                <CardBody className="w-full mx-auto py-3 gap-5 max-w-md h-96">
-                  <div className="card">
-                    후원할 지역의 상세정보 보여주기 
-                  </div>
-                </CardBody>
+    return (
+      <>
+        <NextUIProvider>
+          <main className="flex flex-row">
+            <section className="main-container flex-1">
+              <div className="cardcover">
+                <Card className="flex flex-row px-3 py-10">
 
-                <CardBody className="py-3 gap-7">
+                  <CardBody className="w-full mx-auto py-3 gap-5 max-w-md h-96">
+                    <div className="card">
+                        후원할 지역의 상세정보 보여주기
+                    </div>
+                  </CardBody>
 
-                  <Autocomplete
-                    aria-label="국가 선택"
-                    placeholder="현재 진행 중인 재난 확인하기"
-                    className="max-w-md"
+                  <CardBody className="py-3 gap-7">
+
+                    <Autocomplete
+                      aria-label="국가 선택"
+                      placeholder="현재 진행 중인 재난 확인하기"
+                      className="max-w-md"
                     >
-                    {nations.map((nation) => (
-                      <AutocompleteItem key={nation.value} value={nation.value} className="text-black">
-                        {nation.label}
-                      </AutocompleteItem>
-                    ))}
-                  </Autocomplete>
+                      {nations.map((nation) => (
+                        <AutocompleteItem key={nation.value} value={nation.value} className="text-black">
+                            {nation.label}
+                        </AutocompleteItem>
+                      ))}
+                    </Autocomplete>
 
-                  <Input
-                    placeholder="0.00"
-                    labelPlacement="outside"
-                    startContent={
-                      <div className="pointer-events-none flex items-center">
-                        <span className="text-default-400 text-small">$</span>
-                      </div>
-                    }
-                    endContent={
-                      <div className="flex items-center">
-                        <label className="sr-only" htmlFor="currency">
-                          Currency
-                        </label>
-                        <select
-                          aria-label="통화 선택"
-                          className="outline-none border-0 bg-transparent text-default-400 text-small"
-                          id="currency"
-                          name="currency"
-                        >
-                          <option>USD</option>
-                          <option>ARS</option>
-                          <option>EUR</option>
-                        </select>
-                      </div>
-                    }
-                    type="number"
-                  />
+                    <Input
+                      placeholder="0.00"
+                      labelPlacement="outside"
+                      startContent={
+                          <div className="pointer-events-none flex items-center">
+                              <span className="text-default-400 text-small">$</span>
+                          </div>
+                      }
+                      endContent={
+                          <div className="flex items-center">
+                              <label className="sr-only" htmlFor="currency">
+                                  Currency
+                              </label>
+                              <select
+                                  aria-label="통화 선택"
+                                  className="outline-none border-0 bg-transparent text-default-400 text-small"
+                                  id="currency"
+                                  name="currency"
+                              >
+                                  <option>USD</option>
+                                  <option>ARS</option>
+                                  <option>EUR</option>
+                              </select>
+                          </div>
+                      }
+                      type="number"
+                    />
 
-                  <Button color="primary" onClick={handleButtonClick}>
-                    후원하기
-                  </Button>
+                    <Button color="primary" onClick={handleButtonClick}>
+                        후원하기
+                    </Button>
 
-                </CardBody>
+                  </CardBody>
 
-              </Card>
-            </div>
-          </section>
-        </main>
-      </NextUIProvider>
-    </>
+                </Card>
+              </div>
+            </section>
+          </main>
+        </NextUIProvider>
+      </>
   );
 };
 
