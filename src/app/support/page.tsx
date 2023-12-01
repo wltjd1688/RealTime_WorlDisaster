@@ -2,9 +2,9 @@
 
 import React, { useState } from "react";
 import { NextUIProvider, Card, CardBody, Autocomplete, AutocompleteItem, Input, Button } from "@nextui-org/react";
-import { nations } from "@/app/constants/nations";
+import nations from "../constants/nations";
 import axios from "axios";
-import '../globals.css';
+import "../globals.css";
 
 interface User {
   name: string;
