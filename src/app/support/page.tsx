@@ -54,10 +54,13 @@ const Support: React.FC = () => {
                   <Autocomplete
                     aria-label="국가 선택"
                     placeholder="현재 진행 중인 재난 확인하기"
-                    defaultItems={nations}
                     className="max-w-md"
-                  >
-                    {(item) => <AutocompleteItem key={item.value} className="text-black">{item.label}</AutocompleteItem>}
+                    >
+                    {nations.map((nation) => (
+                      <AutocompleteItem key={nation.value} value={nation.value} className="text-black">
+                        {nation.label}
+                      </AutocompleteItem>
+                    ))}
                   </Autocomplete>
 
                   <Input
