@@ -7,6 +7,10 @@ import React, { useState, useEffect } from 'react';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 
+import { io } from 'socket.io-client';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 
 export const Navbar = () => {
 
@@ -19,7 +23,6 @@ export const Navbar = () => {
       setIsLoggedIn(true);
     }
   }, []);
-
 
   const handleLogIn = async () => {
     const token = Cookies.get('access-token');
@@ -51,8 +54,100 @@ export const Navbar = () => {
     }
   };
 
+  useEffect(() => {
+
+    // const socket = io('https://worldisaster.com/alerts', {
+    const socket = io('http://localhost:3001/alerts', { // 로컬 테스트 용으로, 삭제 후 위 코드 활성화 필요 @@@@@@@@
+      withCredentials: true, // CORS 문제를 해결하기 위한 옵션
+      path: '/socket.io', // Sockets.io 라이브러리의 표준값
+      transports: ['websocket'], // 트랜스포트 방식을 "websocket"으로 지정
+    });
+
+    socket.on('connect', () => {
+      console.log('Alerts 웹소켓 연결 성공');
+    });
+
+    socket.on('disaster-alert', (message) => {
+      console.log(message); // debug
+      const data = JSON.parse(message);
+      const result = {
+        dID: data.dID, // "EQ1403291"
+        dSource: data.dSource, // "GDACS"
+        dStatus: data.dStatus, // "real-time"
+        dAlertLevel: data.dAlertLevel, // "Green"
+        dSeverity: data.dSeverity, // "Magnitude 4.5M, Depth:28.8km"
+        dCountry: data.dCountry, // "United States"
+        dCountryCode: data.dCountryCode, // "us"
+        dCountryIso3: data.dCountryIso3, // "USA"
+        dType: data.dType, // "Earthquake"
+        dTypeCode: data.dTypeCode, // "EQ"
+        dDate: data.dDate, // "Fri, 01 Dec 2023 17:54:39 GMT"
+        dLatitude: data.dLatitude, // "52.0898"
+        dLongitude: data.dLongitude, // "173.2261"
+        dTitle: data.dTitle, // "Green earthquake alert (Magnitude 4.5M, Depth:28.843km) in United States 01/12/2023 17:54 UTC, Few people affected in 100km."
+        dDescription: data.dDescription, // "On 12/1/2023 5:54:39 PM, an earthquake occurred in United States potentially affecting Few people affected in 100km. The earthquake had Magnitude 4.5M, Depth:28.843km."
+        dUrl: data.dUrl, // "https://www.gdacs.org/report.aspx?eventtype=EQ&eventid=1403291"
+        objectId: data.objectId // 177
+      }
+
+      interface CustomToastProps {
+        dType: string;
+        dCountry: string;
+        dAlertLevel: string;
+        dUrl: string;
+      }
+
+      const CustomToastWithLink: React.FC<CustomToastProps> = (
+        { dType, dCountry, dAlertLevel, dUrl } // 여기서 dUrl 값을 추후 바꿔줘야 함 @@@@@@@
+      ) => {
+
+        const alertLevelColor =
+          dAlertLevel === 'Green' ? 'green' :
+            dAlertLevel === 'Orange' ? 'orange' :
+              dAlertLevel === 'Red' ? 'red' :
+                'blue'; // 기본색상
+
+        return (
+          <div>
+            {dCountry}: new {dType}
+            <span style={{ color: alertLevelColor }}> ({dAlertLevel})</span>.
+            {' '}
+            <Link href={dUrl}>
+              <a>
+                Click <span style={{ color: 'yellow' }}>HERE</span> for details.
+              </a>
+            </Link>
+          </div>
+        );
+      };
+
+      toast.warn(<CustomToastWithLink dType={result.dType} dCountry={result.dCountry} dAlertLevel={result.dAlertLevel} dUrl={result.dUrl} />, {
+        position: "top-left",
+        autoClose: 20000, // "false", integer
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "dark", // "light", "dark", "colored"
+      });
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Disconnected from server');
+    });
+
+    return () => {
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    };
+  }, []);
+
   return (
     <>
+      <ToastContainer limit={5} />
+
       <nav className='navbar'>
         <div className='flex items-center gap-5'>
           <Link href='/' className='flex items-center gap-4'>
