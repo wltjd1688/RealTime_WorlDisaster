@@ -1,12 +1,33 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster ,IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, VerticalOrigin, NearFarScalar, ScreenSpaceEventHandler, defined, ScreenSpaceEventType, Ellipsoid,BaseLayerPicker} from 'cesium';
+import {
+  Viewer,
+  Math, 
+  Cartesian3, 
+  Color, 
+  PinBuilder, 
+  EntityCluster,
+  IonWorldImageryStyle, 
+  createWorldImageryAsync, 
+  CustomDataSource, 
+  VerticalOrigin, 
+  NearFarScalar, 
+  ScreenSpaceEventHandler, 
+  defined, 
+  ScreenSpaceEventType, 
+  Ellipsoid, 
+  Entity, 
+  JulianDate,
+  Quaternion,
+  Transforms,
+  Matrix4,
+  Matrix3 } from 'cesium';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
-import axios from 'axios';
 import DetailLeftSidebar from './DetailLeftSidebar';
-import {atom, useRecoilState, } from 'recoil';
-import {dataState } from '../recoil/dataRecoil';
+import { constSelector, useRecoilState, } from 'recoil';
+import { dataState, DataType} from '../recoil/dataRecoil';
+import axios from 'axios';
 
 interface disasterInfoHover {
   dId: string;
@@ -29,6 +50,7 @@ interface disasterInfo {
   objectId:number;
 }
 
+
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
@@ -37,7 +59,7 @@ const EarthCesium = () => {
   const [isUserInput, setIsUserInput] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(18090749.93102962);
   const [showSidebar, setShowSidebar] = useState<Boolean>(false);
-  const [data,setData] = useRecoilState(dataState);
+  const [data, setData] = useRecoilState(dataState); // dataState를 data와 setData로 분리하여 사용
   const [dIdValue, setDIdValue] = useState<string>('');
 
   // 디테일 사이드바 토글
@@ -49,47 +71,47 @@ const EarthCesium = () => {
   function getColorForDisasterType(type:any) {
     switch (type) {
       case "Tropical Cyclone":
-        return Color.RED;
+        return "RED";
       case 'Mud Slide':
-        return Color.BROWN; // 진흙색으로 수정
+        return "BROWN"; // 진흙색으로 수정
       case 'Flash Flood':
-        return Color.DARKBLUE; // 어두운 파랑색으로 수정
+        return "DARKBLUE"; // 어두운 파랑색으로 수정
       case 'Wild Fire':
-        return Color.ORANGE; // 불의 색상으로 수정
+        return "ORANGE"; // 불의 색상으로 수정
       case 'Cold Wave':
-        return Color.CYAN; // 차가운 색상으로 수정
+        return "CYAN"; // 차가운 색상으로 수정
       case 'Technological Disaster':
-        return Color.GRAY; // 기술적 재난을 회색으로 표현
+        return "GRAY"; // 기술적 재난을 회색으로 표현
       case 'Snow Avalanche':
-        return Color.LIGHTSKYBLUE; // 눈사태에 어울리는 색상으로 수정
+        return "LIGHTSKYBLUE"; // 눈사태에 어울리는 색상으로 수정
       case 'Volcano':
-        return Color.DARKRED; // 활화산을 짙은 빨강으로 표현
+        return "DARKRED"; // 활화산을 짙은 빨강으로 표현
       case 'Fire':
-        return Color.FIREBRICK; // 불의 다른 색상으로 표현
+        return "FIREBRICK"; // 불의 다른 색상으로 표현
       case 'Epidemic':
-        return Color.GREENYELLOW; // 전염병을 밝은 녹색으로 표현
+        return "GREENYELLOW"; // 전염병을 밝은 녹색으로 표현
       case 'Storm Surge':
-        return Color.STEELBLUE; // 폭풍 해일을 철색으로 표현
+        return "STEELBLUE"; // 폭풍 해일을 철색으로 표현
       case 'Tsunami':
-        return Color.DEEPSKYBLUE; // 쓰나미를 하늘색으로 표현
+        return "DEEPSKYBLUE"; // 쓰나미를 하늘색으로 표현
       case 'Insect Infestation':
-        return Color.OLIVE; // 곤충 재해를 올리브색으로 표현
+        return "OLIVE"; // 곤충 재해를 올리브색으로 표현
       case 'Drought':
-        return Color.TAN; // 가뭄을 베이지색으로 표현
+        return "TAN"; // 가뭄을 베이지색으로 표현
       case 'Earthquake':
-        return Color.SIENNA; // 지진을 진흙 갈색으로 표현
+        return "SIENNA"; // 지진을 진흙 갈색으로 표현
       case 'Flood':
-        return Color.NAVY; // 홍수를 진한 파랑색으로 표현
+        return "NAVY"; // 홍수를 진한 파랑색으로 표현
       case 'Land Slide':
-        return Color.SADDLEBROWN; // 산사태를 갈색으로 표현
+        return "SADDLEBROWN"; // 산사태를 갈색으로 표현
       case 'Severe Local Storm':
-        return Color.DARKSLATEGRAY; // 강한 폭풍을 어두운 회색으로 표현
+        return "DARKSLATEGRAY"; // 강한 폭풍을 어두운 회색으로 표현
       case 'Extratropical Cyclone':
-        return Color.DARKORCHID; // 외대륙 사이클론을 어두운 보라색으로 표현
+        return "DARKORCHID"; // 외대륙 사이클론을 어두운 보라색으로 표현
       case 'Heat Wave':
-        return Color.RED; // 열파를 빨간색으로 표현      
+        return "RED2"; // 열파를 빨간색으로 표현      
       default:
-        return Color.WHITE;
+        return "WHITE";
     }
   }
 
@@ -147,8 +169,8 @@ const EarthCesium = () => {
       });
     viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
     viewer.scene.screenSpaceCameraController.maximumZoomDistance = 18090749.93102962; // 최대 확대 거리 (미터 단위)
-    viewer.scene.screenSpaceCameraController.enableTilt = false; // 휠클릭 회전 활성화 여부
-    viewer.scene.screenSpaceCameraController.enableLook = false; // 우클릭 회전 활성화 여부
+    viewer.scene.screenSpaceCameraController.enableTilt = true; // 휠클릭 회전 활성화 여부
+    viewer.scene.screenSpaceCameraController.enableLook = true; // 우클릭 회전 활성화 여부
     viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_DOUBLE_CLICK); // 더블클릭 이벤트 제거
 
     viewerRef.current = viewer;  
@@ -190,15 +212,15 @@ useEffect(() => {
   // });
 
   // const pinBuilder = new PinBuilder();
-  // const pin50 = pinBuilder.fromText('50+', Color.RED, 48).toDataURL();
-  // const pin40 = pinBuilder.fromText('40+', Color.ORANGE, 48).toDataURL();
-  // const pin30 = pinBuilder.fromText('30+', Color.YELLOW, 48).toDataURL();
-  // const pin20 = pinBuilder.fromText('20+', Color.GREEN, 48).toDataURL();
-  // const pin10 = pinBuilder.fromText('10+', Color.BLUE, 48).toDataURL();
-  // const pin5 = pinBuilder.fromText('5+', Color.PURPLE, 48).toDataURL();
+  // const pin50 = pinBuilder.fromText('50+', "RED, 48).toDataURL();
+  // const pin40 = pinBuilder.fromText('40+', "ORANGE, 48).toDataURL();
+  // const pin30 = pinBuilder.fromText('30+', "YELLOW, 48).toDataURL();
+  // const pin20 = pinBuilder.fromText('20+', "GREEN, 48).toDataURL();
+  // const pin10 = pinBuilder.fromText('10+', "BLUE, 48).toDataURL();
+  // const pin5 = pinBuilder.fromText('5+', "PURPLE, 48).toDataURL();
   // const singleDigitPins = new Array(10);
   // for (let i = 0; i < singleDigitPins.length; ++i) {
-  //   singleDigitPins[i] = pinBuilder.fromText(String(i), Color.VIOLET, 48).toDataURL();
+  //   singleDigitPins[i] = pinBuilder.fromText(String(i), "VIOLET, 48).toDataURL();
   // };
 
   // customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
@@ -224,46 +246,72 @@ useEffect(() => {
   //   }
   // })
 
+  // function setModelOrientationToEarthCenter(entity:Entity, viewer:Viewer){
+  //   const position = entity.position.getValue(JulianDate.now());
+  //   const earthCenter = new Cartesian3(0, 0, 0);
+
+  //   // 지구 중심을 바라보는 방향 계산
+  //   const direction = Cartesian3.normalize(Cartesian3.subtract(earthCenter, position, new Cartesian3()), new Cartesian3());
+  //   const up = Cartesian3.clone(Cartesian3.UNIT_Z);
+
+  //   // 쿼터니언을 사용하여 회전 계산
+  //   const rotation = Quaternion.fromVectors(up, direction);
+  //   entity.orientation = Quaternion.toHeadingPitchRoll(rotation);
+  // }
+
   // 데이터 받아오기
   const loadData = async (viewer:Viewer) => {
     try{
-      const response = await axios.get('https://worldisaster.com/api/oldDisasters');
-      const data = response.data; // API 응답에서 데이터 추출
-      data.forEach((item:any)=>{
-        if (typeof item.dLatitude === 'number' && typeof item.dLongitude === 'number'){
-        let latitude = item.dLatitude;
-        let longitude = item.dLongitude;
-        let textlength = item.dType.length;
-        customDataSource.entities.add({
-          id: item.dID,
-          // 데이터 좌표 넣기
-          position: Cartesian3.fromDegrees(longitude, latitude),
-          // 표지판 이미지
-          // billboard: {
-          //   image: pinBuilder.fromText(`${1}`,getColorForDisasterType(item.dType), 48).toDataURL(), // 표지판 이미지
-          // },
-          //포인트 이미지
-          point: {
-            pixelSize: 1,
-            color: getColorForDisasterType(item.dType),
-            scaleByDistance: new NearFarScalar(250000, 50, 10e6, 2)
-          },
-          // 라벨
-          // label: {
-          //   text: item.dType,
-          //   font: '14pt monospace',
-          //   outlineWidth: 2,
-          //   verticalOrigin: VerticalOrigin.BOTTOM,
-          //   pixelOffset: new Cartesian3(50 + (textlength*3)*1.4, 9, 0),
-          //   translucencyByDistance: new NearFarScalar(9e6, 1.0, 10e6, 0.0),
-          //   eyeOffset: new Cartesian3(0, 0, -100),
-          // },
-          // properties에 데이터 넣기
-          properties: item,
-        });
+      const [oldData, newData] = await Promise.all([
+        axios.get('https://worldisaster.com/api/oldDisasters'),
+        axios.get('https://worldisaster.com/api/newDisasters'),
+      ]);
+      const Odata = oldData.data;
+      const Ndata = newData.data;
+
+      Odata.concat(Ndata).forEach((item:DataType) => {
+        if (item.dLongitude && item.dLatitude) {
+          let entityToAdd;
+          if (item.dStatus === 'ongoing' || item.dStatus === 'real-time'){
+            item.dStatus === 'ongoing' ? (
+            entityToAdd = new Entity({
+              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+              model: {
+                uri: `/AprilFoolspin/${getColorForDisasterType(item.dType)}.glb`,
+                minimumPixelSize: 200,
+                maximumScale: 13000000,
+                heightReference: 0,
+              },
+              properties: item,
+            })):(
+            entityToAdd = new Entity({
+              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+              model: {
+                uri: `/pin/${getColorForDisasterType(item.dType)}.glb`,
+                minimumPixelSize: 100,
+                maximumScale: 200000,
+                heightReference: 0,
+              },
+              properties: item,
+          }))
+          } else {
+            entityToAdd = new Entity({
+              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+              point: {
+                pixelSize: 10,
+                heightReference: 0,
+                color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
+              },
+              properties: item,
+            });
+          }
+          // setModelOrientationToEarthCenter(entityToAdd, viewer, item.dStatus);
+          customDataSource.entities.add(entityToAdd)
         }
       });
-      setData(data);
+
+      setData([...Odata, ...Ndata]);
+      
       console.log(`데이터 로드 성공`);
     } catch(err) {
       console.log('데이터 로드 실패', err);
@@ -372,6 +420,7 @@ useEffect(() => {
     const latitude = Math.toDegrees(cameraPosition.latitude).toFixed(4);
     const cameraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
     router.push(`/earth?lon=${longitude}&lat=${latitude}&height=${cameraHeight}`, undefined);
+    setIsUserInput(false);
   });
 
 }, [viewerRef.current?.camera,search.get('did')]);
@@ -384,6 +433,7 @@ useEffect(() => {
   const zoomHeight = search.get('height');
   const detail = search.get('did');
   if(!viewer || !viewer.scene || !viewer.camera || !isUserInput) {
+    setIsUserInput(true);
     return;
   };
   if (lon && lat && viewer && viewer.scene && viewer.camera) {
