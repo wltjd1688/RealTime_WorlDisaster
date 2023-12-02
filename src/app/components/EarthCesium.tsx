@@ -20,10 +20,15 @@ import {
   JulianDate,
   Transforms,
   HeadingPitchRoll,
-  ConstantProperty} from 'cesium';
+  ConstantProperty,
+  HeightReference,
+  BingMapsImageryProvider,
+  ImageryLayerCollection,
+  ImageryLayer,
+  DirectionalLight} from 'cesium';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
-import DetailLeftSidebar from './DetailLeftSidebar';
+import DidLeftSidebar from './DidLeftSidebar';
 import { constSelector, useRecoilState, } from 'recoil';
 import { dataState, DataType} from '../recoil/dataRecoil';
 import axios from 'axios';
@@ -85,7 +90,7 @@ const EarthCesium = () => {
         return "LIGHTSKYBLUE"; // 눈사태에 어울리는 색상으로 수정
       case 'Volcano':
         return "DARKRED"; // 활화산을 짙은 빨강으로 표현
-      case 'Fire':
+      case 'Fire' && 'Forest Fire':
         return "FIREBRICK"; // 불의 다른 색상으로 표현
       case 'Epidemic':
         return "GREENYELLOW"; // 전염병을 밝은 녹색으로 표현
@@ -171,9 +176,15 @@ const EarthCesium = () => {
     viewer.scene.screenSpaceCameraController.enableTilt = true; // 휠클릭 회전 활성화 여부
     viewer.scene.screenSpaceCameraController.enableLook = true; // 우클릭 회전 활성화 여부
     viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_DOUBLE_CLICK); // 더블클릭 이벤트 제거
+    // viewer.scene.globe.maximumScreenSpaceError = 0; // 지형의 최대 화면 공간 오차 (픽셀 단위)
+    viewer.scene.globe.enableLighting = false; // 조명 활성화 여부
+    viewer.scene.light = new DirectionalLight({
+      direction: Cartesian3.fromDegrees(1.0,1.0,1.0),
+      intensity: 11,
+    });
 
     viewerRef.current = viewer;  
-
+      
     // layout 추가
     createWorldImageryAsync({
       style: IonWorldImageryStyle.AERIAL_WITH_LABELS,
@@ -258,49 +269,57 @@ useEffect(() => {
   //   entity.orientation = Quaternion.toHeadingPitchRoll(rotation);
   // }
 
-  function rotateEntity(entity:Entity, viewer:Viewer, item:DataType) {
-    if (!entity.position || !entity.position.getValue) {
-      return; // position이 없다면 함수를 종료
-    }
+  // function rotateEntity(entity:Entity, viewer:Viewer, item:DataType) {
+  //   if (!entity.position || !entity.position.getValue) {
+  //     return; // position이 없다면 함수를 종료
+  //   }
   
-    const position = entity.position.getValue(JulianDate.now());
-    if (!position) {
-      return; // position 값이 없다면 함수를 종료
-    }
+  //   const position = entity.position.getValue(JulianDate.now());
+  //   if (!position) {
+  //     return; // position 값이 없다면 함수를 종료
+  //   }
   
-    let heading = 0;
-    let pitch = 0;
-    let roll = 0;
+  //   let heading = 0;
+  //   let pitch = 0;
+  //   let roll = 0;
   
-    // item.dStatus에 따른 회전 각도 설정
-    if (item.dStatus === 'ongoing') {
-      // 'ongoing' 상태일 때의 회전 각도
-      heading = 45; // 예시 각도
-      pitch = 45;
-      roll = 45;
-    } else if (item.dStatus === 'real-time') {
-      // 'real-time' 상태일 때의 회전 각도
-      heading = 20; // 예시 각도
-      pitch = 0;
-      roll = 120;
-    }
-    // 여기에 다른 상태에 대한 조건문 추가 가능
+  //   // item.dStatus에 따른 회전 각도 설정
+  //   if (item.dStatus === 'ongoing') {
+  //     // 'AprilFoolspin' 상태일 때의 회전 각도
+  //     heading = 0; // 예시 각도
+  //     pitch = -90;
+  //     roll = 0;
+  //   } else if (item.dStatus === 'real-time') {
+  //     // 'Pin' 상태일 때의 회전 각도
+  //     heading = 0; // 예시 각도
+  //     pitch = -80;
+  //     roll = 0;
+  //   }
+  //   // 여기에 다른 상태에 대한 조건문 추가 가능
   
-    // heading, pitch, roll을 라디안으로 변환
-    const headingRadians = Math.toRadians(heading);
-    const pitchRadians = Math.toRadians(pitch);
-    const rollRadians = Math.toRadians(roll);
+  //   // heading, pitch, roll을 라디안으로 변환
+  //   const headingRadians = Math.toRadians(heading);
+  //   const pitchRadians = Math.toRadians(pitch);
+  //   const rollRadians = Math.toRadians(roll);
   
-    // 새로운 orientation을 계산
-    const hpr = new HeadingPitchRoll(headingRadians, pitchRadians, rollRadians);
-    const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
+  //   // 새로운 orientation을 계산
+  //   const hpr = new HeadingPitchRoll(headingRadians, pitchRadians, rollRadians);
+  //   const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
   
-    // Entity의 orientation 업데이트
-    entity.orientation = new ConstantProperty(orientation);
-  }
+  //   // Entity의 orientation 업데이트
+  //   entity.orientation = new ConstantProperty(orientation);
+  // }
   
   // 데이터 받아오기
   const loadData = async (viewer:Viewer) => {
+    const outLineColor = (item:DataType) =>{
+      if (item.dAlertLevel === 'Orange'){
+        return Color.TOMATO;
+      } else if(item.dAlertLevel === 'Red') {
+        return Color.RED;
+      }
+    }
+
     try{
       const [oldData, newData] = await Promise.all([
         axios.get('https://worldisaster.com/api/oldDisasters'),
@@ -314,26 +333,28 @@ useEffect(() => {
           let entityToAdd;
           if (item.dStatus === 'ongoing' || item.dStatus === 'real-time'){
             item.dStatus === 'ongoing' ? (
-            entityToAdd = new Entity({
-              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-              model: {
-                uri: `/AprilFoolspin/${getColorForDisasterType(item.dType)}.glb`,
-                minimumPixelSize: 200,
-                maximumScale: 13000000,
-                heightReference: 0,
-              },
-              properties: item,
-            })):(
-            entityToAdd = new Entity({
-              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-              model: {
-                uri: `/pin/${getColorForDisasterType(item.dType)}.glb`,
-                minimumPixelSize: 100,
-                maximumScale: 200000,
-                heightReference: 0,
-              },
-              properties: item,
-          }))
+              entityToAdd = new Entity({
+                position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+                point: {
+                  pixelSize: 8,
+                  heightReference: 0,
+                  outlineColor: item.dAlertLevel == "Green"? outLineColor(item): Color.WHITE,
+                  outlineWidth: 2,
+                  color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
+                  
+                },
+                properties: item,
+              })):(
+              entityToAdd = new Entity({
+                position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+                model: {
+                  uri: `/pin/${getColorForDisasterType(item.dType)}.glb`,
+                  minimumPixelSize: 100,
+                  maximumScale: 80000,
+                  heightReference: HeightReference.CLAMP_TO_GROUND,
+                },
+                properties: item,
+            }))
           } else {
             entityToAdd = new Entity({
               position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
@@ -345,7 +366,7 @@ useEffect(() => {
               properties: item,
             });
           }
-          rotateEntity(entityToAdd, viewer, item);
+          // rotateEntity(entityToAdd, viewer, item);
           customDataSource.entities.add(entityToAdd)
         }
       });
@@ -358,8 +379,9 @@ useEffect(() => {
     }
   }
 
-  viewer.dataSources.add(customDataSource);
   loadData(viewer);
+  viewer.dataSources.add(customDataSource);
+  // viewer.scene.globe.depthTestAgainstTerrain = true;
 
 },[]);
 
@@ -453,6 +475,8 @@ useEffect(() => {
   if(!viewer || !viewer.scene || !viewer.camera) {
     return;
   };
+
+  let cameraPosition = viewer.camera.positionWC;
   
   const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
     const cameraPosition = viewer.camera.positionCartographic;
@@ -497,7 +521,7 @@ useEffect(() => {
       <div id="cesiumContainer" ref={cesiumContainer}>
         {/* <ModalComponent /> */}
       </div>
-      {showSidebar && <DetailLeftSidebar onClose={toggleSidebar} dID={dIdValue} />}
+      {showSidebar && <DidLeftSidebar onClose={toggleSidebar} dID={dIdValue} />}
     </>
   );
 };

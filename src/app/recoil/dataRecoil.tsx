@@ -5,6 +5,7 @@ export interface DataType{
   dID: string;
   dSource: string;
   dStatus: string;
+  dAlertLevel: string|null;
   dCountry: string;
   dDistrict: string|null;
   dType: string;
