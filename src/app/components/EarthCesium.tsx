@@ -173,7 +173,7 @@ const EarthCesium = () => {
       });
     viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
     viewer.scene.screenSpaceCameraController.maximumZoomDistance = 18090749.93102962; // 최대 확대 거리 (미터 단위)
-    viewer.scene.screenSpaceCameraController.enableTilt = true; // 휠클릭 회전 활성화 여부
+    viewer.scene.screenSpaceCameraController.enableTilt = false; // 휠클릭 회전 활성화 여부
     viewer.scene.screenSpaceCameraController.enableLook = true; // 우클릭 회전 활성화 여부
     viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_DOUBLE_CLICK); // 더블클릭 이벤트 제거
     // viewer.scene.globe.maximumScreenSpaceError = 0; // 지형의 최대 화면 공간 오차 (픽셀 단위)
@@ -312,13 +312,6 @@ useEffect(() => {
   
   // 데이터 받아오기
   const loadData = async (viewer:Viewer) => {
-    const outLineColor = (item:DataType) =>{
-      if (item.dAlertLevel === 'Orange'){
-        return Color.TOMATO;
-      } else if(item.dAlertLevel === 'Red') {
-        return Color.RED;
-      }
-    }
 
     try{
       const [oldData, newData] = await Promise.all([
@@ -338,8 +331,8 @@ useEffect(() => {
                 point: {
                   pixelSize: 8,
                   heightReference: 0,
-                  outlineColor: item.dAlertLevel == "Green"? outLineColor(item): Color.WHITE,
                   outlineWidth: 2,
+                  outlineColor: item.dAlertLevel=="Green"? Color.LIMEGREEN:item.dAlertLevel=="Orange"? Color.YELLOW:Color.TOMATO,
                   color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
                   
                 },

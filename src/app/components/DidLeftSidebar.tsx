@@ -15,6 +15,7 @@ interface didDetailProps {
 const DidLeftSidebar: React.FC<didDetailProps>= ({ onClose, dID }) => {
   const data = useRecoilValue(dataState); // dataState를 data와 setData로 분리하여 사용
   const filteredData = data.filter((item) => item.dID === dID); // data에서 dID가 일치하는 데이터만 필터링
+  if (dID===null) return;
 
       
   return (
