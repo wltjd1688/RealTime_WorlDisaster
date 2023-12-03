@@ -11,6 +11,7 @@ import { io } from 'socket.io-client';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
+import ChatToggleComponent from './ChatToggle';
 
 export const Navbar = () => {
 
@@ -56,8 +57,7 @@ export const Navbar = () => {
 
   useEffect(() => {
 
-    // const socket = io('https://worldisaster.com/alerts', {
-    const socket = io('http://localhost:3001/alerts', { // 로컬 테스트 용으로, 삭제 후 위 코드 활성화 필요 @@@@@@@@
+    const socket = io('https://worldisaster.com/alerts', {
       withCredentials: true, // CORS 문제를 해결하기 위한 옵션
       path: '/socket.io', // Sockets.io 라이브러리의 표준값
       transports: ['websocket'], // 트랜스포트 방식을 "websocket"으로 지정
@@ -90,15 +90,17 @@ export const Navbar = () => {
         objectId: data.objectId // 177
       }
 
+      const earthURL = `https://worldisaster.com/earth?lon=${result.dLongitude}&lat=${result.dLatitude}&height=500000&did=${result.dID}`
+
       interface CustomToastProps {
         dType: string;
         dCountry: string;
         dAlertLevel: string;
-        dUrl: string;
+        earthURL: string;
       }
 
       const CustomToastWithLink: React.FC<CustomToastProps> = (
-        { dType, dCountry, dAlertLevel, dUrl } // 여기서 dUrl 값을 추후 바꿔줘야 함 @@@@@@@
+        { dType, dCountry, dAlertLevel, earthURL } // 여기서 dUrl 값을 추후 바꿔줘야 함 @@@@@@@
       ) => {
 
         const alertLevelColor =
@@ -112,7 +114,7 @@ export const Navbar = () => {
             {dCountry}: new {dType}
             <span style={{ color: alertLevelColor }}> ({dAlertLevel})</span>.
             {' '}
-            <Link href={dUrl}>
+            <Link href={earthURL}>
               <a>
                 Click <span style={{ color: 'yellow' }}>HERE</span> for details.
               </a>
@@ -121,8 +123,8 @@ export const Navbar = () => {
         );
       };
 
-      toast.warn(<CustomToastWithLink dType={result.dType} dCountry={result.dCountry} dAlertLevel={result.dAlertLevel} dUrl={result.dUrl} />, {
-        position: "top-left",
+      toast.warn(<CustomToastWithLink dType={result.dType} dCountry={result.dCountry} dAlertLevel={result.dAlertLevel} earthURL={earthURL} />, {
+        position: "top-right",
         autoClose: 20000, // "false", integer
         hideProgressBar: false,
         closeOnClick: true,
@@ -147,6 +149,7 @@ export const Navbar = () => {
   return (
     <>
       <ToastContainer limit={5} />
+      <ChatToggleComponent />
 
       <nav className='navbar'>
         <div className='flex items-center gap-5'>

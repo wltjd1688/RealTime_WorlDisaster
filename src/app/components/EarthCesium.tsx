@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Viewer, Math, Cartesian3, Color, PinBuilder, EntityCluster, IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, VerticalOrigin, NearFarScalar, ScreenSpaceEventHandler, defined, ScreenSpaceEventType } from 'cesium';
 import { useRouter } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
-import { io } from 'socket.io-client';
 import axios from 'axios';
 
 
@@ -132,9 +131,9 @@ const EarthCesium = () => {
         style: IonWorldImageryStyle.AERIAL_WITH_LABELS
       }).then((imageryProvider) => {
         viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
-        console.log(`layout추가 성공`)
+        console.log(`layout 추가 성공`)
       }).catch((err) => {
-        console.log(`layout추가 실패: ${err}`);
+        console.log(`layout 추가 실패: ${err}`);
       });
 
       // viewer 정리 로직 추가
@@ -313,38 +312,6 @@ const EarthCesium = () => {
       moveEndListener();
     };
   }, [router]);
-
-  useEffect(() => { // 채팅용 웹소켓 (테스트)
-
-    // 소켓 연결 설정
-    const socket = io('http://localhost:3001/chats', {
-      withCredentials: true, // CORS 문제를 해결하기 위한 옵션
-      path: '/socket.io',
-      transports: ['websocket'], // 트랜스포트 방식을 "websocket"으로 지정
-    }); // 서버 주소 변경 필요
-
-    socket.on('connect', () => {
-      console.log('Chats 웹소켓 연결 성공');
-    });
-
-    socket.emit('joinRoom', 'main'); // 방 조인
-
-    socket.on('newMessage', (data) => { // 새로운 메시지 발생시 처리
-      console.log('Message from server:', data);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Disconnected from the server.');
-    });
-
-    // 컴포넌트 언마운트 시 소켓 연결 해제
-    return () => {
-      if (socket.connected) {
-        socket.disconnect();
-      }
-    };
-
-  }, []); // 빈 의존성 배열로 마운트 시 한 번만 실행
 
   return (
     <div id="cesiumContainer" ref={cesiumContainer}>
