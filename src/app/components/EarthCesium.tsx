@@ -29,9 +29,10 @@ import {
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import DidLeftSidebar from './DidLeftSidebar';
-import { constSelector, useRecoilState, } from 'recoil';
-import { dataState, DataType} from '../recoil/dataRecoil';
+import { constSelector, useRecoilState, useRecoilValue } from 'recoil';
+import { dataState, DataType, filterState, FilterType} from '../recoil/dataRecoil';
 import axios from 'axios';
+import FilterBar from './Filter';
 
 interface disasterInfoHover {
   dId: string;
@@ -54,7 +55,6 @@ interface disasterInfo {
   objectId:number;
 }
 
-
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
@@ -64,6 +64,7 @@ const EarthCesium = () => {
   const [zoomLevel, setZoomLevel] = useState(18090749.93102962);
   const [showSidebar, setShowSidebar] = useState<Boolean>(false);
   const [data, setData] = useRecoilState(dataState); // dataState를 data와 setData로 분리하여 사용
+  const dataFilter = useRecoilValue(filterState);
   const [dIdValue, setDIdValue] = useState<string>('');
 
   // 디테일 사이드바 토글
@@ -120,19 +121,20 @@ const EarthCesium = () => {
   }
 
   useEffect(() => {
+      // 이미 Viewer가 초기화된 경우 새로 생성하지 않음
     if (typeof window !== 'undefined' && cesiumContainer.current) {
       let viewer = new Viewer(cesiumContainer.current,{
-        animation: false,  // 애니메이션 위젯 비활성화
-        baseLayerPicker: false,  // 베이스 레이어 선택기 비활성화
-        fullscreenButton: false,  // 전체 화면 버튼 비활성화
-        vrButton: false,  // VR 버튼 비활성화
-        geocoder: false,  // 지오코더 비활성화
-        homeButton: true,  // 홈 버튼 비활성화
-        infoBox: false,  // 정보 박스 비활성화
-        sceneModePicker: false,  // 장면 모드 선택기 비활성화
-        selectionIndicator: false,  // 선택 지시기 비활성화
-        timeline: false,  // 타임라인 비활성화
-        navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
+        animation: false, // 애니메이션 위젯 비활성화
+        baseLayerPicker: false,// 베이스 레이어 선택기 비활성화
+        fullscreenButton: false,// 전체 화면 버튼 비활성화
+        vrButton: false,// VR 버튼 비활성화
+        geocoder: false,// 지오코더 비활성화
+        homeButton: true,// 홈 버튼 비활성화
+        infoBox: false,// 정보 박스 비활성화
+        sceneModePicker: false,// 장면 모드 선택기 비활성화
+        selectionIndicator: false,// 선택 지시기 비활성화
+        timeline: false,// 타임라인 비활성화
+        navigationHelpButton: false,// 네비게이션 도움말 버튼 비활성화
         creditContainer: document.createElement("none"), // 스택오버플로우 참고
         // navigationInstructionsInitiallyVisible?: boolean;
         // scene3DOnly?: boolean;
@@ -171,212 +173,135 @@ const EarthCesium = () => {
         // depthPlaneEllipsoidOffset?: number;
         // msaaSamples?: number;
       });
-    viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
-    viewer.scene.screenSpaceCameraController.maximumZoomDistance = 18090749.93102962; // 최대 확대 거리 (미터 단위)
-    viewer.scene.screenSpaceCameraController.enableTilt = false; // 휠클릭 회전 활성화 여부
-    viewer.scene.screenSpaceCameraController.enableLook = true; // 우클릭 회전 활성화 여부
-    viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_DOUBLE_CLICK); // 더블클릭 이벤트 제거
-    // viewer.scene.globe.maximumScreenSpaceError = 0; // 지형의 최대 화면 공간 오차 (픽셀 단위)
-    viewer.scene.globe.enableLighting = false; // 조명 활성화 여부
-    viewer.scene.light = new DirectionalLight({
-      direction: Cartesian3.fromDegrees(1.0,1.0,1.0),
-      intensity: 11,
-    });
-
-    viewerRef.current = viewer;  
       
-    // layout 추가
-    createWorldImageryAsync({
-      style: IonWorldImageryStyle.AERIAL_WITH_LABELS,
-    }).then((imageryProvider) => {
-      viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
-      console.log(`layout추가 성공`)
-    }).catch((err) => {
-      console.log(`layout추가 실패: ${err}`);
-    });
+      viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
+      viewer.scene.screenSpaceCameraController.maximumZoomDistance = 18090749.93102962; // 최대 확대 거리 (미터 단위)
+      viewer.scene.screenSpaceCameraController.enableTilt = false; // 휠클릭 회전 활성화 여부
+      viewer.scene.screenSpaceCameraController.enableLook = true; // 우클릭 회전 활성화 여부
+      viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_DOUBLE_CLICK); // 더블클릭 이벤트 제거
+      // viewer.scene.globe.maximumScreenSpaceError = 0; // 지형의 최대 화면 공간 오차 (픽셀 단위)
+      viewer.scene.globe.enableLighting = false; // 조명 활성화 여부
+      viewer.scene.light = new DirectionalLight({
+        direction: Cartesian3.fromDegrees(1.0,1.0,1.0),
+        intensity: 11,
+      });
 
-    // viewer 정리 로직 추가
-    return () => {
-      if (viewer && viewer.destroy) {
-        viewer.destroy();        
+      // viewer 인스턴스 저장
+      viewerRef.current = viewer;
+          
+      // layout 추가
+      createWorldImageryAsync({
+        style: IonWorldImageryStyle.AERIAL_WITH_LABELS,
+      }).then((imageryProvider) => {
+        viewer.scene.imageryLayers.addImageryProvider(imageryProvider);
+        console.log(`layout추가 성공`)
+      }).catch((err) => {
+        console.log(`layout추가 실패: ${err}`);
+      });
+      
+      // viewer 정리 로직 추가
+      return () => {
+        if (viewer && viewer.destroy){
+        viewer?.destroy();
+        }
       }
-    };
-  }
-},[]);
+    }
+  },[]);
 
-useEffect(() => {
-  const viewer = viewerRef.current;
-  if(!viewer || !viewer.scene || !viewer.camera) {
-    return;
-  };
-
-  const customDataSource = new CustomDataSource('Disasters');
-
-  // customDataSource.clustering = new EntityCluster({
-  //   enabled: true,
-  //   pixelRange: 100,
-  //   minimumClusterSize: 2,
-  //   clusterBillboards: true,
-  //   clusterLabels: true,
-  //   clusterPoints: true,
-  // });
-
-  // const pinBuilder = new PinBuilder();
-  // const pin50 = pinBuilder.fromText('50+', "RED, 48).toDataURL();
-  // const pin40 = pinBuilder.fromText('40+', "ORANGE, 48).toDataURL();
-  // const pin30 = pinBuilder.fromText('30+', "YELLOW, 48).toDataURL();
-  // const pin20 = pinBuilder.fromText('20+', "GREEN, 48).toDataURL();
-  // const pin10 = pinBuilder.fromText('10+', "BLUE, 48).toDataURL();
-  // const pin5 = pinBuilder.fromText('5+', "PURPLE, 48).toDataURL();
-  // const singleDigitPins = new Array(10);
-  // for (let i = 0; i < singleDigitPins.length; ++i) {
-  //   singleDigitPins[i] = pinBuilder.fromText(String(i), "VIOLET, 48).toDataURL();
-  // };
-
-  // customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
-  //   let count = clusteredEntities.length;
-  //     cluster.billboard.show = true;
-  //     cluster.label.show = false;
-  //     cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
-
-  //   if (count >= 50) {
-  //     cluster.billboard.image = pin50;
-  //   } else if (count >= 40) {
-  //     cluster.billboard.image = pin40;
-  //   } else if (count >= 30) {
-  //     cluster.billboard.image = pin30;
-  //   } else if (count >= 20) {
-  //     cluster.billboard.image = pin20;
-  //   } else if (count >= 10) {
-  //     cluster.billboard.image = pin10;
-  //   } else if (count >= 5) {
-  //     cluster.billboard.image = pin5;
-  //   } else {
-  //     cluster.billboard.image = singleDigitPins[count];
-  //   }
-  // })
-
-  // function setModelOrientationToEarthCenter(entity:Entity, viewer:Viewer){
-  //   const position = entity.position.getValue(JulianDate.now());
-  //   const earthCenter = new Cartesian3(0, 0, 0);
-
-  //   // 지구 중심을 바라보는 방향 계산
-  //   const direction = Cartesian3.normalize(Cartesian3.subtract(earthCenter, position, new Cartesian3()), new Cartesian3());
-  //   const up = Cartesian3.clone(Cartesian3.UNIT_Z);
-
-  //   // 쿼터니언을 사용하여 회전 계산
-  //   const rotation = Quaternion.fromVectors(up, direction);
-  //   entity.orientation = Quaternion.toHeadingPitchRoll(rotation);
-  // }
-
-  // function rotateEntity(entity:Entity, viewer:Viewer, item:DataType) {
-  //   if (!entity.position || !entity.position.getValue) {
-  //     return; // position이 없다면 함수를 종료
-  //   }
-  
-  //   const position = entity.position.getValue(JulianDate.now());
-  //   if (!position) {
-  //     return; // position 값이 없다면 함수를 종료
-  //   }
-  
-  //   let heading = 0;
-  //   let pitch = 0;
-  //   let roll = 0;
-  
-  //   // item.dStatus에 따른 회전 각도 설정
-  //   if (item.dStatus === 'ongoing') {
-  //     // 'AprilFoolspin' 상태일 때의 회전 각도
-  //     heading = 0; // 예시 각도
-  //     pitch = -90;
-  //     roll = 0;
-  //   } else if (item.dStatus === 'real-time') {
-  //     // 'Pin' 상태일 때의 회전 각도
-  //     heading = 0; // 예시 각도
-  //     pitch = -80;
-  //     roll = 0;
-  //   }
-  //   // 여기에 다른 상태에 대한 조건문 추가 가능
-  
-  //   // heading, pitch, roll을 라디안으로 변환
-  //   const headingRadians = Math.toRadians(heading);
-  //   const pitchRadians = Math.toRadians(pitch);
-  //   const rollRadians = Math.toRadians(roll);
-  
-  //   // 새로운 orientation을 계산
-  //   const hpr = new HeadingPitchRoll(headingRadians, pitchRadians, rollRadians);
-  //   const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
-  
-  //   // Entity의 orientation 업데이트
-  //   entity.orientation = new ConstantProperty(orientation);
-  // }
-  
-  // 데이터 받아오기
-  const loadData = async (viewer:Viewer) => {
-
+  //데이터 load로직
+  const loadData = async () => {
     try{
       const [oldData, newData] = await Promise.all([
         axios.get('https://worldisaster.com/api/oldDisasters'),
         axios.get('https://worldisaster.com/api/newDisasters'),
       ]);
-      const Odata = oldData.data;
-      const Ndata = newData.data;
-
-      Odata.concat(Ndata).forEach((item:DataType) => {
-        if (item.dLongitude && item.dLatitude) {
-          let entityToAdd;
-          if (item.dStatus === 'ongoing' || item.dStatus === 'real-time'){
-            item.dStatus === 'ongoing' ? (
-              entityToAdd = new Entity({
-                position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-                point: {
-                  pixelSize: 8,
-                  heightReference: 0,
-                  outlineWidth: 2,
-                  outlineColor: item.dAlertLevel=="Green"? Color.LIMEGREEN:item.dAlertLevel=="Orange"? Color.YELLOW:Color.TOMATO,
-                  color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
-                  
-                },
-                properties: item,
-              })):(
-              entityToAdd = new Entity({
-                position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-                model: {
-                  uri: `/pin/${getColorForDisasterType(item.dType)}.glb`,
-                  minimumPixelSize: 100,
-                  maximumScale: 80000,
-                  heightReference: HeightReference.CLAMP_TO_GROUND,
-                },
-                properties: item,
-            }))
-          } else {
-            entityToAdd = new Entity({
-              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-              point: {
-                pixelSize: 10,
-                heightReference: 0,
-                color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
-              },
-              properties: item,
-            });
-          }
-          // rotateEntity(entityToAdd, viewer, item);
-          customDataSource.entities.add(entityToAdd)
-        }
-      });
-
-      setData([...Odata, ...Ndata]);
-      
+      setData(oldData.data.concat(newData.data));
       console.log(`데이터 로드 성공`);
     } catch(err) {
       console.log('데이터 로드 실패', err);
     }
   }
 
-  loadData(viewer);
-  viewer.dataSources.add(customDataSource);
-  // viewer.scene.globe.depthTestAgainstTerrain = true;
+  //필터링 함수
+  const applyFilters = () => {
+    const viewer = viewerRef.current;
+    if (!viewer || !viewer.scene || !viewer.camera) {
+      return;
+    }
+    const customDataSource = new CustomDataSource('Disasters');
+    viewer.dataSources.add(customDataSource);
+    let filteredData = data
+    
+    if (dataFilter.selectedCountry) {
+      filteredData = filteredData.filter((item:DataType) => item.dCountry === dataFilter.selectedCountry);
+    }
+    if (dataFilter.selectedDisaster && dataFilter.selectedDisaster.length > 0) {
+      filteredData = filteredData.filter((item:DataType) => dataFilter.selectedDisaster.includes(item.dType));
+    }
+    if (dataFilter.selectedYear) {
+      filteredData = filteredData.filter((item:DataType) => new Date(item.dDate).getFullYear() === dataFilter.selectedYear);
+    }
+    if (dataFilter.selectedLive !== null) {
+      filteredData = filteredData.filter((item:DataType) => (dataFilter.selectedLive ? item.dStatus === 'ongoing' : item.dStatus !== 'ongoing'));
+    }
 
-},[]);
+    customDataSource.entities.removeAll();
+
+    filteredData.forEach((item:DataType) => {
+      if (item.dLongitude && item.dLatitude) {
+        let entityToAdd;
+        if (item.dStatus === 'ongoing' || item.dStatus === 'real-time'){
+          item.dStatus === 'ongoing' ? (
+            entityToAdd = new Entity({
+              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+              point: {
+                pixelSize: 8,
+                heightReference: 0,
+                outlineWidth: 2,
+                outlineColor: item.dAlertLevel=="Green"? Color.LIMEGREEN:item.dAlertLevel=="Orange"? Color.YELLOW:Color.TOMATO,
+                color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
+                
+              },
+              properties: item,
+            })):(
+            entityToAdd = new Entity({
+              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+              model: {
+                uri: `/pin/${getColorForDisasterType(item.dType)}.glb`,
+                minimumPixelSize: 100,
+                maximumScale: 80000,
+                heightReference: HeightReference.CLAMP_TO_GROUND,
+              },
+              properties: item,
+          }))
+        } else {
+          entityToAdd = new Entity({
+            position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+            point: {
+              pixelSize: 10,
+              heightReference: 0,
+              color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
+            },
+            properties: item,
+          });
+        }
+        // rotateEntity(entityToAdd, viewer, item);
+        customDataSource.entities.add(entityToAdd)
+      }
+    });
+  }
+
+  useEffect(()=>{
+    if(viewerRef.current){
+      loadData();
+    }
+  },[viewerRef.current])
+
+  useEffect(()=>{
+    if (data.length > 0){
+      applyFilters();
+    }
+  },[dataFilter,data])
 
 // 클릭 이벤트 관리
 useEffect(() => {
@@ -444,6 +369,7 @@ useEffect(() => {
       const camaraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
       router.push(`/earth?lon=${disasterData.dLongitude}&lat=${disasterData.dLatitude}&height=${camaraHeight}&did=${disasterData.dId}`, undefined);
       setDIdValue(disasterData.dId);
+      setIsUserInput(true)
     }
   }, ScreenSpaceEventType.LEFT_CLICK);
 
@@ -458,18 +384,12 @@ useEffect(() => {
 
 }, [viewerRef.current]);
 
-useEffect(()=>{
-  console.log(isUserInput)
-},[])
-
 // 카메라 이동마다 이벤트 관리
 useEffect(() => {
   const viewer = viewerRef.current;
   if(!viewer || !viewer.scene || !viewer.camera) {
     return;
   };
-
-  let cameraPosition = viewer.camera.positionWC;
   
   const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
     const cameraPosition = viewer.camera.positionCartographic;
@@ -477,8 +397,13 @@ useEffect(() => {
     const latitude = Math.toDegrees(cameraPosition.latitude).toFixed(4);
     const cameraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
     router.push(`/earth?lon=${longitude}&lat=${latitude}&height=${cameraHeight}`, undefined);
-    setIsUserInput(false);
   });
+
+  return()=>{
+    if (!isUserInput){
+      moveEndListener()
+    }
+  }
 
 }, [viewerRef.current?.camera,search.get('did')]);
 
@@ -490,7 +415,6 @@ useEffect(() => {
   const zoomHeight = search.get('height');
   const detail = search.get('did');
   if(!viewer || !viewer.scene || !viewer.camera || !isUserInput) {
-    setIsUserInput(true);
     return;
   };
   if (lon && lat && viewer && viewer.scene && viewer.camera) {
@@ -508,13 +432,18 @@ useEffect(() => {
 
 },[search.get('lon'), search.get('lat'), search.get('height'), search.get('did')]);
 
+useEffect(()=>{
+  console.log(dataFilter)
+},[dataFilter])
 
   return (
     <>
       <div id="cesiumContainer" ref={cesiumContainer}>
+        
         {/* <ModalComponent /> */}
       </div>
       {showSidebar && <DidLeftSidebar onClose={toggleSidebar} dID={dIdValue} />}
+      <FilterBar/>
     </>
   );
 };
