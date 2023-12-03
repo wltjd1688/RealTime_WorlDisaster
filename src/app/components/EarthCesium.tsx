@@ -1,32 +1,12 @@
 "use client"
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Viewer,
-  Math, 
-  Cartesian3, 
-  Color, 
-  PinBuilder, 
-  EntityCluster,
-  IonWorldImageryStyle, 
-  createWorldImageryAsync, 
-  CustomDataSource, 
-  VerticalOrigin, 
-  NearFarScalar, 
-  ScreenSpaceEventHandler, 
-  defined, 
-  ScreenSpaceEventType, 
-  Ellipsoid, 
-  Entity, 
-  JulianDate,
-  Transforms,
-  HeadingPitchRoll,
-  ConstantProperty} from 'cesium';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import 'cesium/Build/Cesium/Widgets/widgets.css';
-import DetailLeftSidebar from './DetailLeftSidebar';
-import { constSelector, useRecoilState, } from 'recoil';
+import { Viewer, Math, Cartesian3, Color, IonWorldImageryStyle, createWorldImageryAsync, CustomDataSource, ScreenSpaceEventHandler, defined, ScreenSpaceEventType, Ellipsoid, Entity, JulianDate, Transforms, HeadingPitchRoll, ConstantProperty} from 'cesium';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useRecoilState, } from 'recoil';
 import { dataState, DataType} from '../recoil/dataRecoil';
 import axios from 'axios';
+import DetailLeftSidebar from './DetailLeftSidebar';
+import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 interface disasterInfoHover {
   dId: string;
@@ -129,42 +109,6 @@ const EarthCesium = () => {
         timeline: false,  // 타임라인 비활성화
         navigationHelpButton: false,  // 네비게이션 도움말 버튼 비활성화
         creditContainer: document.createElement("none"), // 스택오버플로우 참고
-        // navigationInstructionsInitiallyVisible?: boolean;
-        // scene3DOnly?: boolean;
-        // shouldAnimate?: boolean;
-        // clockViewModel?: ClockViewModel;
-        // selectedImageryProviderViewModel?: ProviderViewModel;
-        // imageryProviderViewModels?: ProviderViewModel[];
-        // selectedTerrainProviderViewModel?: ProviderViewModel;
-        // terrainProviderViewModels?: ProviderViewModel[];
-        // baseLayer?: ImageryLayer | false;
-        // terrainProvider?: TerrainProvider;
-        // terrain?: Terrain;
-        // skyBox?: SkyBox | false;
-        // skyAtmosphere?: SkyAtmosphere | false;
-        // fullscreenElement?: Element | string;
-        // useDefaultRenderLoop?: boolean;
-        // targetFrameRate?: number;
-        // showRenderLoopErrors?: boolean;
-        // useBrowserRecommendedResolution?: boolean;
-        // automaticallyTrackDataSourceClocks?: boolean;
-        // contextOptions?: ContextOptions;
-        // sceneMode?: SceneMode;
-        // mapProjection?: MapProjection;
-        // globe?: Globe | false;
-        // orderIndependentTranslucency?: boolean;
-        // creditContainer?: Element | string;
-        // creditViewport?: Element | string;
-        // dataSources?: DataSourceCollection;
-        // shadows?: boolean;
-        // terrainShadows?: ShadowMode;
-        // mapMode2D?: MapMode2D;
-        // projectionPicker?: boolean;
-        // blurActiveElementOnCanvasFocus?: boolean;
-        // requestRenderMode?: boolean;
-        // maximumRenderTimeChange?: number;
-        // depthPlaneEllipsoidOffset?: number;
-        // msaaSamples?: number;
       });
     viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
     viewer.scene.screenSpaceCameraController.maximumZoomDistance = 18090749.93102962; // 최대 확대 거리 (미터 단위)
@@ -199,64 +143,7 @@ useEffect(() => {
     return;
   };
 
-const customDataSource = new CustomDataSource('Disasters');
-
-  // customDataSource.clustering = new EntityCluster({
-  //   enabled: true,
-  //   pixelRange: 100,
-  //   minimumClusterSize: 2,
-  //   clusterBillboards: true,
-  //   clusterLabels: true,
-  //   clusterPoints: true,
-  // });
-
-  // const pinBuilder = new PinBuilder();
-  // const pin50 = pinBuilder.fromText('50+', "RED, 48).toDataURL();
-  // const pin40 = pinBuilder.fromText('40+', "ORANGE, 48).toDataURL();
-  // const pin30 = pinBuilder.fromText('30+', "YELLOW, 48).toDataURL();
-  // const pin20 = pinBuilder.fromText('20+', "GREEN, 48).toDataURL();
-  // const pin10 = pinBuilder.fromText('10+', "BLUE, 48).toDataURL();
-  // const pin5 = pinBuilder.fromText('5+', "PURPLE, 48).toDataURL();
-  // const singleDigitPins = new Array(10);
-  // for (let i = 0; i < singleDigitPins.length; ++i) {
-  //   singleDigitPins[i] = pinBuilder.fromText(String(i), "VIOLET, 48).toDataURL();
-  // };
-
-  // customDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
-  //   let count = clusteredEntities.length;
-  //     cluster.billboard.show = true;
-  //     cluster.label.show = false;
-  //     cluster.billboard.verticalOrigin = VerticalOrigin.BOTTOM;
-
-  //   if (count >= 50) {
-  //     cluster.billboard.image = pin50;
-  //   } else if (count >= 40) {
-  //     cluster.billboard.image = pin40;
-  //   } else if (count >= 30) {
-  //     cluster.billboard.image = pin30;
-  //   } else if (count >= 20) {
-  //     cluster.billboard.image = pin20;
-  //   } else if (count >= 10) {
-  //     cluster.billboard.image = pin10;
-  //   } else if (count >= 5) {
-  //     cluster.billboard.image = pin5;
-  //   } else {
-  //     cluster.billboard.image = singleDigitPins[count];
-  //   }
-  // })
-
-  // function setModelOrientationToEarthCenter(entity:Entity, viewer:Viewer){
-  //   const position = entity.position.getValue(JulianDate.now());
-  //   const earthCenter = new Cartesian3(0, 0, 0);
-
-  //   // 지구 중심을 바라보는 방향 계산
-  //   const direction = Cartesian3.normalize(Cartesian3.subtract(earthCenter, position, new Cartesian3()), new Cartesian3());
-  //   const up = Cartesian3.clone(Cartesian3.UNIT_Z);
-
-  //   // 쿼터니언을 사용하여 회전 계산
-  //   const rotation = Quaternion.fromVectors(up, direction);
-  //   entity.orientation = Quaternion.toHeadingPitchRoll(rotation);
-  // }
+  const customDataSource = new CustomDataSource('Disasters');
 
   function rotateEntity(entity:Entity, viewer:Viewer, item:DataType) {
     if (!entity.position || !entity.position.getValue) {
@@ -360,7 +247,9 @@ const customDataSource = new CustomDataSource('Disasters');
   viewer.dataSources.add(customDataSource);
   loadData(viewer);
 
+}
 },[]);
+
 
 // 클릭 이벤트 관리
 useEffect(() => {
