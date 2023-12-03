@@ -176,6 +176,25 @@ const Mypage: React.FC<MypageProps> = () => {
     }
   };
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = Cookies.get('access-token');
+        const res = await axios.get('https://worldisaster.com/api/support/history', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            withCredentials: true,
+          }
+        });
+        console.log('후원 내역 잘 받아와써요오', res);
+      } catch (error) {
+        console.error('데이터 로드 실패', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   return (
     <>
       <NextUIProvider>
