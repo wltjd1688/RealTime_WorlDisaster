@@ -2,8 +2,8 @@
 
 import React, {useState} from "react";
 import { Accordion, AccordionItem, Switch, Slider, Autocomplete, AutocompleteItem, Button, SelectItem, Select } from "@nextui-org/react";
-import { nations } from "./nation";
-import { disasters } from "./disaster";
+import { nations } from "../constants/nation";
+import { disasters } from "../constants/disaster";
 import { useRecoilState } from "recoil";
 import { dataState, DataType, filterState, FilterType} from '../recoil/dataRecoil';
 import { handleClientScriptLoad } from "next/script";
@@ -49,8 +49,7 @@ export const FilterBar = () => {
 
 
   return (
-    <section className='custom-scrollbar leftsidebar'>
-      <div className='flex w-full flex-1 flex-col gap-6 px-6'>
+    <div className=' absolute bottom-0 flex w-full flex-1 flex-col gap-6 px-6'>
       <Accordion variant="splitted">
         <AccordionItem key="1" aria-label="Accordion 1" title="검색을 통해 국가로 이동">
           <Select
@@ -117,7 +116,6 @@ export const FilterBar = () => {
         </AccordionItem>
       </Accordion>
       </div>
-    </section>
   );
 };
 

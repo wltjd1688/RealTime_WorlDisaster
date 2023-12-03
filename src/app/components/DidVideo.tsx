@@ -19,7 +19,7 @@ export const DidVideo: React.FC<DidVideoProps> = ({ dID }) => {
       setError("");
       if (!dID) return;
       try {
-        const response = await fetch(`http://3.37.123.46/api/upload/EQ1403107`);
+        const response = await fetch(`https://worldisaster.com/api/upload/${dID}`);
         const data = await response.json();
         if (data.urls && data.urls.length > 0) {
           setVideoUrls(data.urls);

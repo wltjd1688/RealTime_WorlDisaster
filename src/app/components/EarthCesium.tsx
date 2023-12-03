@@ -294,8 +294,9 @@ const EarthCesium = () => {
   useEffect(()=>{
     if(viewerRef.current){
       loadData();
+      console.log(`데이터 로드`)
     }
-  },[viewerRef.current])
+  },[])
 
   useEffect(()=>{
     if (data.length > 0){
@@ -439,7 +440,6 @@ useEffect(()=>{
   return (
     <>
       <div id="cesiumContainer" ref={cesiumContainer}>
-        
         {/* <ModalComponent /> */}
       </div>
       {showSidebar && <DidLeftSidebar onClose={toggleSidebar} dID={dIdValue} />}
