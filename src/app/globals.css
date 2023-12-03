@@ -104,3 +104,87 @@ nav.with-shadow {
   padding-top: 2px;
   padding-bottom: 2px;
 }
+
+/* 초원 custom */
+
+/* title */
+.main-title {
+  padding: 0 5px;
+  font-size: 20px;
+  font-weight: bold;
+}
+.content-title {
+  font-size: 18px;
+  font-weight: bold;
+}
+.content-subtitle {
+  font-size: 14px;
+}
+
+/* box */
+.content-box1 {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  padding: 20px;
+  margin: 20px 0;
+  background-color: #f5f7f9;
+}
+.content-box2 {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 20px;
+  margin: 20px 0;
+  background-color: #f5f7f9;
+}
+.select-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  margin: 20px 0;
+  background-color: #f5f7f9;
+}
+.select-content {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.select-item {
+  display: flex;
+  padding: 5px 10px;
+  background-color: #d0d7de;
+  border-radius: 12px;
+  
+}
+select {
+  margin: 10px 0;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+/* 선택된 국가 항목 스타일 */
+#selectedNations option:checked {
+  background-color: #d0d7de;
+}
+
+/* 선택된 규모 항목 스타일 */
+#selectedLevels option:checked {
+  background-color: #d0d7de;
+}
+
+/* button */
+.mybtn {
+  margin: 0 auto;
+  padding: 5px 10px;
+  background-color: #d0d7de;
+  border-radius: 8px;
+  font-size: 16px;
+}
+.mybtn:hover {
+  transform: scale(1.1);
+}
+
+.border {
+  border: none;
+  border-bottom: 1px solid black;
+}
