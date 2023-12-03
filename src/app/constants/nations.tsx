@@ -1,4 +1,5 @@
 export const nations = [
+  {label: 'all', value: 'all'},
   {label: 'Afghanistan', value: 'Afghanistan'},
   {label: 'Albania', value: 'Albania'},
   {label: 'Algeria', value: 'Algeria'},

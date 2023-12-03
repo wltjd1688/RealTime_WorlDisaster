@@ -7,24 +7,35 @@ import axios from "axios";
 import Cookies from 'js-cookie';
 import "../globals.css";
 
-interface User {
-    name: string;
-    email: string;
-    provider: string;
+interface Disaster {
+  objectId: number;
+  dID: string;
+  dSource: string;
+  dStatus: string;
+  dAlertLevel: string;
+  dTitle: string;
 }
 
 const Support: React.FC = () => {
+
+  const [disasters, setDisasters] = useState<Disaster[]>([]);
+  const [selecteddID, setSelecteddID] = useState<string>('');
+  const [amount, setAmount] = useState(0);
+  const [currency, setCurrency] = useState("USD"); // 새로운 currency 상태 추가
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = Cookies.get('access-token');
-        await axios.get('https://worldisaster.com/api/support', {
+        const res = await axios.get('https://worldisaster.com/api/support', {
           headers: {
             'Authorization': `Bearer ${token}`,
             withCredentials: true,
           }
         });
+        console.log('후원 리스트 잘 받아와써요오', res);
+        // Assuming res.data is an array of disasters
+        setDisasters(res.data);
       } catch (error) {
         console.error('데이터 로드 실패', error);
       }
@@ -34,15 +45,15 @@ const Support: React.FC = () => {
   }, []);
 
   const token = Cookies.get('access-token');
-    const [DId, setDId] = useState('');
-    const [amount, setAmount] = useState(0);
+    const [dID, setdID] = useState('');
 
     const handleButtonClick = async () => {
       try {
         const response = await axios.post('https://worldisaster.com/api/support/paypal',
           {
-            DId,
+            dID: selecteddID,
             amount,
+            currency,
           },
           {
             headers: {
@@ -51,6 +62,7 @@ const Support: React.FC = () => {
             },
           }
         );
+        console.log('사용자가 후원 요청한 내용을 보내써요',response);
         const approvalUrl = response.data.approvalUrl;
         console.log(approvalUrl);
 
@@ -70,7 +82,7 @@ const Support: React.FC = () => {
         <NextUIProvider>
           <main className="flex flex-row">
             <section className="main-container flex-1">
-              <div className="cardcover">
+              <div className="flex w-full flex-col mx-auto max-w-4xl">
                 <Card className="flex flex-row px-3 py-10">
 
                   <CardBody className="w-full mx-auto py-3 gap-5 max-w-md h-96">
@@ -82,13 +94,15 @@ const Support: React.FC = () => {
                   <CardBody className="py-3 gap-7">
 
                     <Autocomplete
-                      aria-label="국가 선택"
+                      aria-label="재난 선택"
                       placeholder="현재 진행 중인 재난 확인하기"
                       className="max-w-md"
+                      value={selecteddID}
+                      onChange={(event) => setSelecteddID(event.target.value)}
                     >
-                      {nations.map((nation) => (
-                        <AutocompleteItem key={nation.value} value={nation.value} className="text-black">
-                          {nation.label}
+                      {disasters.map((disaster) => (
+                        <AutocompleteItem key={disaster.objectId} value={disaster.dID} className="text-black">
+                          {disaster.dTitle}
                         </AutocompleteItem>
                       ))}
                     </Autocomplete>
@@ -111,6 +125,8 @@ const Support: React.FC = () => {
                             className="outline-none border-0 bg-transparent text-default-400 text-small"
                             id="currency"
                             name="currency"
+                            value={currency}
+                            onChange={(event) => setCurrency(event.target.value)}
                           >
                             <option>USD</option>
                             <option>ARS</option>
