@@ -46,7 +46,7 @@ interface disasterInfo {
   dCountryLongitude: number|null;
   dLatitude: string;
   dLongitude: string;
-  objectId:number;
+  objectId: number;
 }
 
 
@@ -116,7 +116,7 @@ const EarthCesium = () => {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && cesiumContainer.current) {
-      let viewer = new Viewer(cesiumContainer.current,{
+      let viewer = new Viewer(cesiumContainer.current, {
         animation: false,  // 애니메이션 위젯 비활성화
         baseLayerPicker: false,  // 베이스 레이어 선택기 비활성화
         fullscreenButton: false,  // 전체 화면 버튼 비활성화
@@ -184,14 +184,14 @@ const EarthCesium = () => {
       console.log(`layout추가 실패: ${err}`);
     });
 
-    // viewer 정리 로직 추가
-    return () => {
-      if (viewer && viewer.destroy) {
-        viewer.destroy();        
-      }
-    };
-  }
-},[]);
+      // viewer 정리 로직 추가
+      return () => {
+        if (viewer && viewer.destroy) {
+          viewer.destroy();
+        }
+      };
+    }
+  }, []);
 
 useEffect(() => {
   const viewer = viewerRef.current;
@@ -199,7 +199,7 @@ useEffect(() => {
     return;
   };
 
-  const customDataSource = new CustomDataSource('Disasters');
+const customDataSource = new CustomDataSource('Disasters');
 
   // customDataSource.clustering = new EntityCluster({
   //   enabled: true,
@@ -356,7 +356,6 @@ useEffect(() => {
     } catch(err) {
       console.log('데이터 로드 실패', err);
     }
-  }
 
   viewer.dataSources.add(customDataSource);
   loadData(viewer);
@@ -490,7 +489,6 @@ useEffect(() => {
   }
 
 },[search.get('lon'), search.get('lat'), search.get('height'), search.get('did')]);
-
 
   return (
     <>
