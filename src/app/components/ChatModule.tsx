@@ -69,7 +69,7 @@ const ChatModule = () => {
     /* 채팅 히스토리를 불러오는 함수 */
     const fetchChatHistory = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/api/chat/room/main/12H`);
+        const response = await axios.get(`https://worldisaster.com/api/chat/room/main/12H`);
         const initialChat = response.data;
 
         // setChat()을 통해서 원본을 저장하긴 하지만, 이는 추후 활용 여지가 있기 때문이지 당장 필요한건 아님
@@ -255,7 +255,7 @@ const ChatModule = () => {
               onMaxLengthExceed={tooManyCharacters}
               maxHeight={150}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMessage(e.target.value)}
-              onKeyPress={(e) => {
+              onKeyPress={(e:any) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   onMessageSubmit();
