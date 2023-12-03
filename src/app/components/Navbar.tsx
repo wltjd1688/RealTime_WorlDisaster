@@ -146,8 +146,8 @@ export const Navbar = () => {
 
   return (
     <>
-      <ToastContainer limit={5} />
-      <ChatToggleComponent />
+      {/* <ToastContainer limit={5} />
+      <ChatToggleComponent /> */}
 
       <nav className='navbar'>
         <div className='flex items-center gap-5'>

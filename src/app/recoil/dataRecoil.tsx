@@ -18,7 +18,7 @@ export interface DataType{
 }
 
 export interface FilterType{
-    selectedCountry: string|null,
+    selectedCountry: string,
     selectedDisaster: string[],
     selectedYear: number,
     selectedLive: boolean;
@@ -34,7 +34,7 @@ export const dataState = atom<DataType[]>({
 export const filterState = atom<FilterType>({
   key: 'filterState',
   default: {
-    selectedCountry: null,
+    selectedCountry: "world",
     selectedDisaster: [],
     selectedYear: 2023,
     selectedLive: true,

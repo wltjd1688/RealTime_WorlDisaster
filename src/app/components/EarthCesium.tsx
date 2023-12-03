@@ -33,6 +33,7 @@ import { constSelector, useRecoilState, useRecoilValue } from 'recoil';
 import { dataState, DataType, filterState, FilterType} from '../recoil/dataRecoil';
 import axios from 'axios';
 import FilterBar from './Filter';
+import { set } from 'video.js/dist/types/tech/middleware';
 
 interface disasterInfoHover {
   dId: string;
@@ -66,6 +67,8 @@ const EarthCesium = () => {
   const [data, setData] = useRecoilState(dataState); // dataState를 data와 setData로 분리하여 사용
   const dataFilter = useRecoilValue(filterState);
   const [dIdValue, setDIdValue] = useState<string>('');
+  const [custom, setCustom] = useState<CustomDataSource|null>(null);
+  const [removeAfter, setRemoveAfter] = useState<boolean>(false);
 
   // 디테일 사이드바 토글
   const toggleSidebar = () => {
@@ -208,234 +211,242 @@ const EarthCesium = () => {
     }
   },[]);
 
-  //데이터 load로직
-  const loadData = async () => {
-    try{
-      const [oldData, newData] = await Promise.all([
-        axios.get('https://worldisaster.com/api/oldDisasters'),
-        axios.get('https://worldisaster.com/api/newDisasters'),
-      ]);
-      setData(oldData.data.concat(newData.data));
-      console.log(`데이터 로드 성공`);
-    } catch(err) {
-      console.log('데이터 로드 실패', err);
+    //데이터 load로직
+    const loadData = async () => {
+      try{
+        const [oldData, newData] = await Promise.all([
+          axios.get('https://worldisaster.com/api/oldDisasters'),
+          axios.get('https://worldisaster.com/api/newDisasters'),
+        ]);
+        setData(oldData.data.concat(newData.data));
+        setCustom(new CustomDataSource('Disasters'));
+        console.log(`데이터 로드 성공`);
+      } catch(err) {
+        console.log('데이터 로드 실패', err);
+      }
     }
-  }
 
-  //필터링 함수
-  const applyFilters = () => {
+    const applyFilters = () => {
+      const viewer = viewerRef.current;
+      if (!viewer || !viewer.scene || !viewer.camera) {
+        return;
+      }
+      if (!custom) return;
+      viewer.dataSources.add(custom);
+      let filteredData = data
+      
+      if (dataFilter.selectedCountry !== "world") {
+        filteredData = filteredData.filter((item:DataType) => item.dCountry === dataFilter.selectedCountry);
+      }
+      if (dataFilter.selectedDisaster && dataFilter.selectedDisaster.length > 0) {
+        filteredData = filteredData.filter((item:DataType) => !dataFilter.selectedDisaster.includes(item.dType));
+      }
+      if (dataFilter.selectedYear) {
+        filteredData = filteredData.filter((item:DataType) => new Date(item.dDate).getFullYear() === dataFilter.selectedYear);
+      }
+      if (dataFilter.selectedLive !== null) {
+        filteredData = filteredData.filter((item:DataType) => (dataFilter.selectedLive ? item.dStatus!=="past" : item.dStatus==="past"));
+      }
+  
+      custom.entities.removeAll();
+  
+      filteredData.forEach((item:DataType) => {
+        if (item.dLongitude && item.dLatitude) {
+          let entityToAdd;
+          if (item.dStatus === 'ongoing' || item.dStatus === 'real-time'){
+            item.dStatus === 'ongoing' ? (
+              entityToAdd = new Entity({
+                position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+                point: {
+                  pixelSize: 8,
+                  heightReference: 0,
+                  outlineWidth: 2,
+                  outlineColor: item.dAlertLevel=="Green"? Color.LIMEGREEN:item.dAlertLevel=="Orange"? Color.YELLOW:Color.TOMATO,
+                  color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
+                  
+                },
+                properties: item,
+              })):(
+              entityToAdd = new Entity({
+                position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+                model: {
+                  uri: `/pin/${getColorForDisasterType(item.dType)}.glb`,
+                  minimumPixelSize: 100,
+                  maximumScale: 80000,
+                  heightReference: HeightReference.CLAMP_TO_GROUND,
+                },
+                properties: item,
+            }))
+          } else {
+            entityToAdd = new Entity({
+              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+              point: {
+                pixelSize: 10,
+                heightReference: 0,
+                color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
+              },
+              properties: item,
+            });
+          }
+          // rotateEntity(entityToAdd, viewer, item);
+          custom.entities.add(entityToAdd)
+        }
+      });
+    }
+  
+  useEffect(()=>{
+    loadData();
+  },[]) 
+
+  useEffect(()=>{
+    if (!custom || !viewerRef.current) return;
+      // custom.entities.removeAll();
+      viewerRef.current.dataSources.remove(custom);
+  },[dataFilter])
+
+  useEffect(()=>{
+    if (!custom || !viewerRef.current) return;
+    applyFilters();
+  },[dataFilter])
+  
+  useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || !viewer.scene || !viewer.camera) {
       return;
     }
+
     const customDataSource = new CustomDataSource('Disasters');
     viewer.dataSources.add(customDataSource);
-    let filteredData = data
-    
-    if (dataFilter.selectedCountry) {
-      filteredData = filteredData.filter((item:DataType) => item.dCountry === dataFilter.selectedCountry);
-    }
-    if (dataFilter.selectedDisaster && dataFilter.selectedDisaster.length > 0) {
-      filteredData = filteredData.filter((item:DataType) => dataFilter.selectedDisaster.includes(item.dType));
-    }
-    if (dataFilter.selectedYear) {
-      filteredData = filteredData.filter((item:DataType) => new Date(item.dDate).getFullYear() === dataFilter.selectedYear);
-    }
-    if (dataFilter.selectedLive !== null) {
-      filteredData = filteredData.filter((item:DataType) => (dataFilter.selectedLive ? item.dStatus === 'ongoing' : item.dStatus !== 'ongoing'));
+
+  }, [dataFilter, data]);
+
+  // 클릭 이벤트 관리
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if (!viewer || !viewer.scene || !viewer.camera) {
+      return;
     }
 
-    customDataSource.entities.removeAll();
+    const tooltip = document.createElement('div') as HTMLDivElement;
+    tooltip.style.display = 'none';
+    tooltip.style.position = 'absolute';
+    tooltip.style.backgroundColor = 'white';
+    tooltip.style.border = '1px solid white';
+    tooltip.style.borderRadius = '10px';
+    tooltip.style.padding = '5px';
+    tooltip.style.color = 'black';
+    document.body.appendChild(tooltip);
 
-    filteredData.forEach((item:DataType) => {
-      if (item.dLongitude && item.dLatitude) {
-        let entityToAdd;
-        if (item.dStatus === 'ongoing' || item.dStatus === 'real-time'){
-          item.dStatus === 'ongoing' ? (
-            entityToAdd = new Entity({
-              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-              point: {
-                pixelSize: 8,
-                heightReference: 0,
-                outlineWidth: 2,
-                outlineColor: item.dAlertLevel=="Green"? Color.LIMEGREEN:item.dAlertLevel=="Orange"? Color.YELLOW:Color.TOMATO,
-                color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
-                
-              },
-              properties: item,
-            })):(
-            entityToAdd = new Entity({
-              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-              model: {
-                uri: `/pin/${getColorForDisasterType(item.dType)}.glb`,
-                minimumPixelSize: 100,
-                maximumScale: 80000,
-                heightReference: HeightReference.CLAMP_TO_GROUND,
-              },
-              properties: item,
-          }))
-        } else {
-          entityToAdd = new Entity({
-            position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-            point: {
-              pixelSize: 10,
-              heightReference: 0,
-              color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
-            },
-            properties: item,
-          });
-        }
-        // rotateEntity(entityToAdd, viewer, item);
-        customDataSource.entities.add(entityToAdd)
+    // 핸들러 모음
+    const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
+
+    // 호버 이벤트
+    handler.setInputAction((movement:any) => {
+      const pickedObject = viewerRef.current?.scene.pick(movement.endPosition);
+      if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties && !showSidebar) {
+        const properties = pickedObject.id.properties;
+        const disasterData:disasterInfoHover = {
+          dId: properties._dID?._value,
+          dType: properties._dType?._value,
+          dCountry: properties._dCountry?._value,
+          dStatus: properties._dStatus?._value,
+          dDate: properties._dDate?._value,
+        };
+        // pickedObject.id._point._pixelSize._value
+        tooltip.innerHTML = `
+          <div>type: ${disasterData.dType}</div>
+          <div>Country: ${disasterData.dCountry}</div>
+          <div>Data: ${disasterData.dDate}</div>
+          <div>Status: ${disasterData.dStatus}</div>`;
+        tooltip.style.display = 'block';
+        tooltip.style.bottom = `${window.innerHeight - movement.endPosition.y - 50}px`;
+        tooltip.style.left = `${movement.endPosition.x}px`;
+      } else {
+        tooltip.style.display = 'none';
       }
-    });
-  }
+    }, ScreenSpaceEventType.MOUSE_MOVE);
 
-  useEffect(()=>{
-    if(viewerRef.current){
-      loadData();
-      console.log(`데이터 로드`)
-    }
-  },[])
-
-  useEffect(()=>{
-    if (data.length > 0){
-      applyFilters();
-    }
-  },[dataFilter,data])
-
-// 클릭 이벤트 관리
-useEffect(() => {
-  const viewer = viewerRef.current;
-  if (!viewer || !viewer.scene || !viewer.camera) {
-    return;
-  }
-
-  const tooltip = document.createElement('div') as HTMLDivElement;
-  tooltip.style.display = 'none';
-  tooltip.style.position = 'absolute';
-  tooltip.style.backgroundColor = 'white';
-  tooltip.style.border = '1px solid white';
-  tooltip.style.borderRadius = '10px';
-  tooltip.style.padding = '5px';
-  tooltip.style.color = 'black';
-  document.body.appendChild(tooltip);
-
-  // 핸들러 모음
-  const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
-
-  // 호버 이벤트
-  handler.setInputAction((movement:any) => {
-    const pickedObject = viewerRef.current?.scene.pick(movement.endPosition);
-    if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties && !showSidebar) {
-      const properties = pickedObject.id.properties;
-      const disasterData:disasterInfoHover = {
-        dId: properties._dID?._value,
-        dType: properties._dType?._value,
-        dCountry: properties._dCountry?._value,
-        dStatus: properties._dStatus?._value,
-        dDate: properties._dDate?._value,
-      };
-      // pickedObject.id._point._pixelSize._value
-      tooltip.innerHTML = `
-        <div>type: ${disasterData.dType}</div>
-        <div>Country: ${disasterData.dCountry}</div>
-        <div>Data: ${disasterData.dDate}</div>
-        <div>Status: ${disasterData.dStatus}</div>`;
-      tooltip.style.display = 'block';
-      tooltip.style.bottom = `${window.innerHeight - movement.endPosition.y - 50}px`;
-      tooltip.style.left = `${movement.endPosition.x}px`;
-    } else {
-      tooltip.style.display = 'none';
-    }
-  }, ScreenSpaceEventType.MOUSE_MOVE);
-
-  // 원클릭 이벤트
-  handler.setInputAction((click:any) => {
-    const pickedObject = viewer.scene.pick(click.position);
-    if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties) {
-      const properties = pickedObject.id.properties;
-      const disasterData:disasterInfo = {
-        dId: properties._dID?._value,
-        dType: properties._dType?._value,
-        dCountry: properties._dCountry?._value,
-        dStatus: properties._dStatus?._value,
-        dDate: properties._dDate?._value,
-        dCountryLatitude: properties._dCountryLatitude?._value,
-        dCountryLongitude: properties._dCountryLongitude?._value,
-        dLatitude: properties._dLatitude?._value,
-        dLongitude: properties._dLongitude?._value,
-        objectId: properties._objectId?._value,
-      };
-      const camaraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
-      router.push(`/earth?lon=${disasterData.dLongitude}&lat=${disasterData.dLatitude}&height=${camaraHeight}&did=${disasterData.dId}`, undefined);
-      setDIdValue(disasterData.dId);
-      setIsUserInput(true)
-    }
-  }, ScreenSpaceEventType.LEFT_CLICK);
-
-  // 더블클릭 이벤트
-  handler.setInputAction(()=>{
-    
-  },ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
-
-  return () => {
-    handler.destroy();
-  };
-
-}, [viewerRef.current]);
-
-// 카메라 이동마다 이벤트 관리
-useEffect(() => {
-  const viewer = viewerRef.current;
-  if(!viewer || !viewer.scene || !viewer.camera) {
-    return;
-  };
-  
-  const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
-    const cameraPosition = viewer.camera.positionCartographic;
-    const longitude = Math.toDegrees(cameraPosition.longitude).toFixed(4);
-    const latitude = Math.toDegrees(cameraPosition.latitude).toFixed(4);
-    const cameraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
-    router.push(`/earth?lon=${longitude}&lat=${latitude}&height=${cameraHeight}`, undefined);
-  });
-
-  return()=>{
-    if (!isUserInput){
-      moveEndListener()
-    }
-  }
-
-}, [viewerRef.current?.camera,search.get('did')]);
-
-// url로 들어오는 경우 이벤트 관리
-useEffect(() => {
-  const viewer = viewerRef.current;
-  const lon = search.get('lon');
-  const lat = search.get('lat');
-  const zoomHeight = search.get('height');
-  const detail = search.get('did');
-  if(!viewer || !viewer.scene || !viewer.camera || !isUserInput) {
-    return;
-  };
-  if (lon && lat && viewer && viewer.scene && viewer.camera) {
-    viewer.camera.flyTo({
-      destination: Cartesian3.fromDegrees(lon?Number(lon):0, lat?Number(lat):0, zoomHeight?Number(zoomHeight):10e5),
-      duration: 1,
-      complete: () => {
-        if (detail){
-          setDIdValue(detail);
-          setShowSidebar(true);
-        }
+    // 원클릭 이벤트
+    handler.setInputAction((click:any) => {
+      const pickedObject = viewer.scene.pick(click.position);
+      if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties) {
+        const properties = pickedObject.id.properties;
+        const disasterData:disasterInfo = {
+          dId: properties._dID?._value,
+          dType: properties._dType?._value,
+          dCountry: properties._dCountry?._value,
+          dStatus: properties._dStatus?._value,
+          dDate: properties._dDate?._value,
+          dCountryLatitude: properties._dCountryLatitude?._value,
+          dCountryLongitude: properties._dCountryLongitude?._value,
+          dLatitude: properties._dLatitude?._value,
+          dLongitude: properties._dLongitude?._value,
+          objectId: properties._objectId?._value,
+        };
+        const camaraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
+        router.push(`/earth?lon=${disasterData.dLongitude}&lat=${disasterData.dLatitude}&height=${camaraHeight}&did=${disasterData.dId}`, undefined);
+        setDIdValue(disasterData.dId);
+        setIsUserInput(true)
       }
+    }, ScreenSpaceEventType.LEFT_CLICK);
+
+    // 더블클릭 이벤트
+    handler.setInputAction(()=>{
+      
+    },ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
+
+    return () => {
+      handler.destroy();
+    };
+
+  }, [viewerRef.current]);
+
+  // 카메라 이동마다 이벤트 관리
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    if(!viewer || !viewer.scene || !viewer.camera) {
+      return;
+    };
+    
+    const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
+      const cameraPosition = viewer.camera.positionCartographic;
+      const longitude = Math.toDegrees(cameraPosition.longitude).toFixed(4);
+      const latitude = Math.toDegrees(cameraPosition.latitude).toFixed(4);
+      const cameraHeight = Ellipsoid.WGS84.cartesianToCartographic(viewer.camera.position).height;
+      router.push(`/earth?lon=${longitude}&lat=${latitude}&height=${cameraHeight}`, undefined);
     });
-  }
 
-},[search.get('lon'), search.get('lat'), search.get('height'), search.get('did')]);
+    return()=>{
+      if (!isUserInput){
+        moveEndListener()
+      }
+    }
 
-useEffect(()=>{
-  console.log(dataFilter)
-},[dataFilter])
+  }, [viewerRef.current?.camera,search.get('did')]);
+
+  // url로 들어오는 경우 이벤트 관리
+  useEffect(() => {
+    const viewer = viewerRef.current;
+    const lon = search.get('lon');
+    const lat = search.get('lat');
+    const zoomHeight = search.get('height');
+    const detail = search.get('did');
+    if(!viewer || !viewer.scene || !viewer.camera || !isUserInput) {
+      return;
+    };
+    if (lon && lat && viewer && viewer.scene && viewer.camera) {
+      viewer.camera.flyTo({
+        destination: Cartesian3.fromDegrees(lon?Number(lon):0, lat?Number(lat):0, zoomHeight?Number(zoomHeight):10e5),
+        duration: 1,
+        complete: () => {
+          if (detail){
+            setDIdValue(detail);
+            setShowSidebar(true);
+          }
+        }
+      });
+    }
+  },[search.get('lon'), search.get('lat'), search.get('height'), search.get('did')]);
 
   return (
     <>

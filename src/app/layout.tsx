@@ -26,9 +26,6 @@ export default function RootLayout({
         <RecoidContextProvider>
           {children}
         </RecoidContextProvider>
-        <RecoidContextProvider>
-          {children}
-        </RecoidContextProvider>
       </body>
     </html>
   )

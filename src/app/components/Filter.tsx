@@ -1,13 +1,12 @@
 "use client";
 
-import React, {useState} from "react";
+import React, {useEffect, useState} from "react";
 import { Accordion, AccordionItem, Switch, Slider, Autocomplete, AutocompleteItem, Button, SelectItem, Select } from "@nextui-org/react";
 import { nations } from "../constants/nation";
 import { disasters } from "../constants/disaster";
 import { useRecoilState } from "recoil";
 import { dataState, DataType, filterState, FilterType} from '../recoil/dataRecoil';
-import { handleClientScriptLoad } from "next/script";
-import { values } from "video.js/dist/types/utils/obj";
+import { set } from "video.js/dist/types/tech/middleware";
 
 export const FilterBar = () => {
   const [filtering, setFiltering] = useRecoilState(filterState);
@@ -20,7 +19,6 @@ export const FilterBar = () => {
   const handleCountrySelect = (contury: string) => {
     setSelectCountry(contury);
     setFiltering({...filtering, selectedCountry:contury});
-    console.log(contury)
   };
 
   // 재난 유형 선택 핸들러
@@ -30,22 +28,27 @@ export const FilterBar = () => {
       : [...selectDisasters, disasterType];
     setSelectDisasters(updatedDisasters);
     setFiltering({ ...filtering, selectedDisaster: updatedDisasters });
-    console.log(disasterType)
   };
 
   // 연도 선택 핸들러
   const handleYearChange = (year: number) => {
     setSelectYear(year);
     setFiltering({ ...filtering, selectedYear: year });
-    console.log(year)
   };
 
   // 실시간 상태 토글 핸들러
   const handleLiveToggle = (isLive: boolean) => {
     setSelectLive(isLive);
-    setFiltering({ ...filtering, selectedLive: isLive });
-    console.log(isLive)
+    if (isLive){
+      setFiltering({ ...filtering, selectedLive: isLive, selectedYear: 2023 });
+    } else {
+      setFiltering({ ...filtering, selectedLive: isLive });
+    }
   };
+
+  useEffect(() => {
+    console.log(filtering);
+  },[filtering])
 
 
   return (
@@ -57,7 +60,7 @@ export const FilterBar = () => {
             label="국가로 바로 이동해 보세요! ✈️"
             placeholder="Search a nation"
             className="max-w-xs pb-3"
-            value={selectCountry || ""}
+            value={selectCountry ||""}
             onChange={(e)=>{handleCountrySelect(e.target.value)}}
             >
             {nations.map((nation) => (
@@ -75,7 +78,7 @@ export const FilterBar = () => {
                   color="primary" 
                   size="sm" 
                   radius="full"
-                  variant={!selectDisasters.includes(disaster.type) ? "bordered" : undefined}
+                  variant={!selectDisasters.includes(disaster.type) ? undefined:"bordered"}
                   onClick={() => handleDisasterSelect(disaster.type)}
                 >
                 {disaster.type}
@@ -111,6 +114,7 @@ export const FilterBar = () => {
                   handleYearChange(year);
               }}
               className="max-w-md text-black"
+              isDisabled={selectLive}
             />
           </div>
         </AccordionItem>
