@@ -69,6 +69,9 @@ const EarthCesium = () => {
   const [dIdValue, setDIdValue] = useState<string>('');
   const [custom, setCustom] = useState<CustomDataSource|null>(null);
   const [removeAfter, setRemoveAfter] = useState<boolean>(false);
+  const [clickedEntity, setClickedEntity] = useState<any>(null);
+  const currentOnTickListener = useRef<((clock: any) => void) | null>(null);
+
 
   // 디테일 사이드바 토글
   const toggleSidebar = () => {
@@ -249,6 +252,8 @@ const EarthCesium = () => {
       }
   
       custom.entities.removeAll();
+
+      // console.log(viewer.entities)
   
       filteredData.forEach((item:DataType) => {
         if (item.dLongitude && item.dLatitude) {
@@ -302,23 +307,24 @@ const EarthCesium = () => {
     if (!custom || !viewerRef.current) return;
       // custom.entities.removeAll();
       viewerRef.current.dataSources.remove(custom);
+      console.log(3);
   },[dataFilter])
 
-  useEffect(()=>{
-    if (!custom || !viewerRef.current) return;
-    applyFilters();
-  },[dataFilter])
-  
   useEffect(() => {
     const viewer = viewerRef.current;
     if (!viewer || !viewer.scene || !viewer.camera) {
       return;
     }
-
     const customDataSource = new CustomDataSource('Disasters');
     viewer.dataSources.add(customDataSource);
-
-  }, [dataFilter, data]);
+    console.log(1);
+  }, [dataFilter,data]);
+  
+  useEffect(()=>{
+    if (!custom || !viewerRef.current) return;
+    applyFilters();
+    console.log(2);
+  },[dataFilter,data])
 
   // 클릭 이벤트 관리
   useEffect(() => {
@@ -387,19 +393,46 @@ const EarthCesium = () => {
         router.push(`/earth?lon=${disasterData.dLongitude}&lat=${disasterData.dLatitude}&height=${camaraHeight}&did=${disasterData.dId}`, undefined);
         setDIdValue(disasterData.dId);
         setIsUserInput(true)
+        setClickedEntity(pickedObject.id);
+        animatePointExpansion(pickedObject.id);
       }
     }, ScreenSpaceEventType.LEFT_CLICK);
-
-    // 더블클릭 이벤트
-    handler.setInputAction(()=>{
-      
-    },ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
 
     return () => {
       handler.destroy();
     };
 
   }, [viewerRef.current]);
+
+  const animatePointExpansion = (entity: Entity) => {
+    if (entity && entity.point && viewerRef.current) {
+      let startSize = 20;
+      let endSize = startSize * 4; // 확대될 크기
+      let duration = 2; // 애니메이션 지속 시간 (초)
+  
+      let startTime = viewerRef.current.clock.currentTime;
+      let endTime = JulianDate.addSeconds(startTime, duration, new JulianDate());
+  
+      const onTickListener = (clock: any) => {
+          if (!entity.point || !viewerRef.current) return;
+  
+          let currentTime = clock.currentTime;
+          let t = JulianDate.secondsDifference(currentTime, startTime) / JulianDate.secondsDifference(endTime, startTime);
+          console.log(typeof t)
+  
+          if (t >= 0 && t <= 1) {
+              entity.point.pixelSize = new ConstantProperty(startSize + t * (endSize - startSize));
+          } else if (t > 1) {
+              viewerRef.current.clock.onTick.removeEventListener(onTickListener);
+          }
+      };
+  
+      currentOnTickListener.current = onTickListener;
+      viewerRef.current.clock.onTick.addEventListener(onTickListener);
+    }
+  };
+  
+  
 
   // 카메라 이동마다 이벤트 관리
   useEffect(() => {

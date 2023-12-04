@@ -46,11 +46,6 @@ export const FilterBar = () => {
     }
   };
 
-  useEffect(() => {
-    console.log(filtering);
-  },[filtering])
-
-
   return (
     <div className=' absolute bottom-0 flex w-full flex-1 flex-col gap-6 px-6'>
       <Accordion variant="splitted">
