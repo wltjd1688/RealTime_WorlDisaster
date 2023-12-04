@@ -115,9 +115,7 @@ export const Navbar = () => {
             <span style={{ color: alertLevelColor }}> ({dAlertLevel})</span>.
             {' '}
             <Link href={earthURL}>
-              <a>
                 Click <span style={{ color: 'yellow' }}>HERE</span> for details.
-              </a>
             </Link>
           </div>
         );
@@ -148,8 +146,8 @@ export const Navbar = () => {
 
   return (
     <>
-      <ToastContainer limit={5} />
-      <ChatToggleComponent />
+      {/* <ToastContainer limit={5} />
+      <ChatToggleComponent /> */}
 
       <nav className='navbar'>
         <div className='flex items-center gap-5'>
