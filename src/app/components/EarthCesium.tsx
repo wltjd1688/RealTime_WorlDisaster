@@ -56,6 +56,12 @@ interface disasterInfo {
   objectId:number;
 }
 
+interface AnimationState {
+  stop: () => void;
+  entity: Entity;
+  originalSize: number;
+}
+
 const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
@@ -69,13 +75,21 @@ const EarthCesium = () => {
   const [dIdValue, setDIdValue] = useState<string>('');
   const [custom, setCustom] = useState<CustomDataSource|null>(null);
   const [removeAfter, setRemoveAfter] = useState<boolean>(false);
-  const [clickedEntity, setClickedEntity] = useState<any>(null);
-  const currentOnTickListener = useRef<((clock: any) => void) | null>(null);
+  const [clickedEntity, setClickedEntity] = useState(null);
+  const [originalSize, setOriginalSize] = useState(null);
+  const [activeAnimation, setActiveAnimation] = useState<AnimationState|null>(null);
 
 
   // 디테일 사이드바 토글
   const toggleSidebar = () => {
     setShowSidebar(!showSidebar);
+    if (!activeAnimation?.entity.point) return;
+    console.log(activeAnimation)
+    if (activeAnimation) {
+      // 현재 애니메이션 중단 및 크기 복원
+      activeAnimation.stop();
+      activeAnimation.entity.point.pixelSize = new ConstantProperty(activeAnimation.originalSize);
+    }
   }
 
   // 재난 타입에 따른 색상 지정
@@ -394,7 +408,6 @@ const EarthCesium = () => {
         setDIdValue(disasterData.dId);
         setIsUserInput(true)
         setClickedEntity(pickedObject.id);
-        animatePointExpansion(pickedObject.id);
       }
     }, ScreenSpaceEventType.LEFT_CLICK);
 
@@ -404,35 +417,58 @@ const EarthCesium = () => {
 
   }, [viewerRef.current]);
 
-  const animatePointExpansion = (entity: Entity) => {
-    if (entity && entity.point && viewerRef.current) {
-      let startSize = 20;
-      let endSize = startSize * 4; // 확대될 크기
-      let duration = 2; // 애니메이션 지속 시간 (초)
-  
-      let startTime = viewerRef.current.clock.currentTime;
-      let endTime = JulianDate.addSeconds(startTime, duration, new JulianDate());
-  
-      const onTickListener = (clock: any) => {
-          if (!entity.point || !viewerRef.current) return;
-  
-          let currentTime = clock.currentTime;
-          let t = JulianDate.secondsDifference(currentTime, startTime) / JulianDate.secondsDifference(endTime, startTime);
-          console.log(typeof t)
-  
-          if (t >= 0 && t <= 1) {
-              entity.point.pixelSize = new ConstantProperty(startSize + t * (endSize - startSize));
-          } else if (t > 1) {
-              viewerRef.current.clock.onTick.removeEventListener(onTickListener);
-          }
-      };
-  
-      currentOnTickListener.current = onTickListener;
-      viewerRef.current.clock.onTick.addEventListener(onTickListener);
+  // 클릭된 엔티티 변경 감지
+  useEffect(() => {
+    if (clickedEntity) {
+      if (activeAnimation) {
+        activeAnimation.stop();
+        if (activeAnimation.entity.point) {
+          activeAnimation.entity.point.pixelSize = new ConstantProperty(activeAnimation.originalSize);
+        }
+      }
+      applyBlinkingEffect(clickedEntity);
     }
+  }, [clickedEntity]);
+
+  const applyBlinkingEffect = (entity: Entity) => {
+    if (!entity.point?.pixelSize) return;
+    console.log("apply들어옴: ",activeAnimation)  
+    // 새로운 애니메이션 적용
+    const originalSize = entity.point.pixelSize.getValue(JulianDate.now());
+    let startTime = Date.now();
+    let currentSize = originalSize;
+  
+    const onTickListener = () => {
+      if (!entity.point) return;
+  
+      let elapsedTime = Date.now() - startTime;
+      if (elapsedTime > 1000) {
+        // 애니메이션 시간이 끝났을 경우
+        entity.point.pixelSize = new ConstantProperty(20);
+        // entity.point.pixelSize = new ConstantProperty(originalSize);
+        return;
+      }
+  
+      // 애니메이션 계산 로직
+      let progress = elapsedTime / 1000;
+      currentSize = originalSize + 1.8*(originalSize * progress);
+  
+      entity.point.pixelSize = new ConstantProperty(currentSize);
+    };
+
+    if (activeAnimation) {
+      activeAnimation.stop();
+    }
+  
+    viewerRef.current?.clock.onTick.addEventListener(onTickListener);
+
+    // 애니메이션 상태 업데이트
+    setActiveAnimation({
+      stop: () => viewerRef.current?.clock.onTick.removeEventListener(onTickListener),
+      entity: entity,
+      originalSize: originalSize
+    });
   };
-  
-  
 
   // 카메라 이동마다 이벤트 관리
   useEffect(() => {
