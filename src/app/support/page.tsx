@@ -1,8 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react";
-import { NextUIProvider, Card, CardBody, Autocomplete, AutocompleteItem, Input, Button } from "@nextui-org/react";
-import nations from "../constants/nations";
+import { NextUIProvider, Card, CardBody } from "@nextui-org/react";
 import axios from "axios";
 import Cookies from 'js-cookie';
 import "../globals.css";
@@ -19,9 +18,9 @@ interface Disaster {
 const Support: React.FC = () => {
 
   const [disasters, setDisasters] = useState<Disaster[]>([]);
-  const [selecteddID, setSelecteddID] = useState<string>('');
-  const [amount, setAmount] = useState(0);
-  const [currency, setCurrency] = useState("USD"); // 새로운 currency 상태 추가
+  const [selecteddID, setSelecteddID] = useState<string>("");
+  const [amount, setAmount] = useState<string>('0');
+  const [currency, setCurrency] = useState<string>("USD");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -33,8 +32,7 @@ const Support: React.FC = () => {
             withCredentials: true,
           }
         });
-        console.log('후원 리스트 잘 받아와써요오', res);
-        // Assuming res.data is an array of disasters
+        console.log('후원 리스트 데이터 로드 성공', res);
         setDisasters(res.data);
       } catch (error) {
         console.error('데이터 로드 실패', error);
@@ -45,9 +43,13 @@ const Support: React.FC = () => {
   }, []);
 
   const token = Cookies.get('access-token');
-    const [dID, setdID] = useState('');
 
     const handleButtonClick = async () => {
+
+      console.log("Before axios request - selecteddID:", selecteddID);
+      console.log("Before axios request - amount:", amount);
+      console.log("Before axios request - currency:", currency);
+
       try {
         const response = await axios.post('https://worldisaster.com/api/support/paypal',
           {
@@ -62,7 +64,7 @@ const Support: React.FC = () => {
             },
           }
         );
-        console.log('사용자가 후원 요청한 내용을 보내써요',response);
+        console.log('후원 요청 버튼 클릭',response);
         const approvalUrl = response.data.approvalUrl;
         console.log(approvalUrl);
 
@@ -93,53 +95,36 @@ const Support: React.FC = () => {
 
                   <CardBody className="py-3 gap-7">
 
-                    <Autocomplete
-                      aria-label="재난 선택"
-                      placeholder="현재 진행 중인 재난 확인하기"
-                      className="max-w-md"
+                    <select 
+                      name="재난 선택"
+                      placeholder="현재 진행 중인 재난 확인하기" 
+                      id="1" 
                       value={selecteddID}
                       onChange={(event) => setSelecteddID(event.target.value)}
                     >
                       {disasters.map((disaster) => (
-                        <AutocompleteItem key={disaster.objectId} value={disaster.dID} className="text-black">
+                        <option 
+                          key={disaster.objectId} 
+                          value={disaster.dID}
+                        >
                           {disaster.dTitle}
-                        </AutocompleteItem>
+                        </option>
                       ))}
-                    </Autocomplete>
+                    </select>
 
-                    <Input
-                      placeholder="0.00"
-                      labelPlacement="outside"
-                      startContent={
-                        <div className="pointer-events-none flex items-center">
-                          <span className="text-default-400 text-small">$</span>
-                        </div>
-                      }
-                      endContent={
-                        <div className="flex items-center">
-                          <label className="sr-only" htmlFor="currency">
-                            Currency
-                          </label>
-                          <select
-                            aria-label="통화 선택"
-                            className="outline-none border-0 bg-transparent text-default-400 text-small"
-                            id="currency"
-                            name="currency"
-                            value={currency}
-                            onChange={(event) => setCurrency(event.target.value)}
-                          >
-                            <option>USD</option>
-                            <option>ARS</option>
-                            <option>EUR</option>
-                          </select>
-                        </div>
-                      }
-                      type="number"
-                    />
-
-                    <Button color="primary" onClick={handleButtonClick}>
-                      후원하기
-                    </Button>
+                    <input type="text" name="amount" id="amount" placeholder="0.00" onChange={(event) => setAmount(event.target.value)} />
+                    <select
+                      aria-label="통화 선택"
+                      className="outline-none border-0 bg-transparent text-default-400 text-small"
+                      id="currency"
+                      name="currency"
+                      value={currency}
+                      onChange={(event) => setCurrency(event.target.value)}
+                    >
+                      <option>USD</option>
+                      <option>EUR</option>
+                    </select>
+                    <button onClick={handleButtonClick}>후원하기</button>
 
                   </CardBody>
 
