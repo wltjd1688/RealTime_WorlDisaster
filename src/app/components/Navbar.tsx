@@ -11,7 +11,7 @@ import { io } from 'socket.io-client';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import ChatToggleComponent from './ChatToggle';
+// import ChatToggleComponent from './ChatToggle';
 
 export const Navbar = () => {
 
