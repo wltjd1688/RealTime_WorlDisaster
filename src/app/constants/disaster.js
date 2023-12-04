@@ -19,6 +19,8 @@ export const disasters = [
   { type: "Severe Local Storm", color: "DARKSLATEGRAY" },
   { type: "Extratropical Cyclone", color: "DARKORCHID" },
   { type: "Heat Wave", color: "RED" },
+  { type: "Forest Fire", color: "ORANGE" },
+  { type: "Other", color: "WHITE" },
 ];
 
 export const getDefaultColor = () => "WHITE";
