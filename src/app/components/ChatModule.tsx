@@ -27,6 +27,7 @@ interface User {
 /* 실제 모듈 */
 const ChatModule = () => {
 
+  /* 유저 로그인상태 확인 */
   const loginState = useRecoilValue(userLoginState);
   const user = loginState.isLoggedIn ? (loginState.userInfo as User) : null;
 
@@ -172,22 +173,18 @@ const ChatModule = () => {
   /* API나 웹소켓으로 받은 채팅 메시지를 react-chat-element에서 해석 가능하도록 변환하는 함수 */
   const transformMessage = (msg: ChatMessage, currentUser: User | null) => {
     
-    if (!currentUser) {
-      return;
-    }
 
     const currentUserHandle = currentUser?.email || currentUser?.name; // 이메일 또는 이름을 사용
     const senderHandle = msg.chatSenderID.trim().toLowerCase();
     const isCurrentUser = currentUserHandle === senderHandle;
     
-
-    console.log(`Current User: ${currentUserHandle}, Sender: ${msg.chatSenderID}, Is Current User: ${isCurrentUser}`); // debug
+    // console.log(`Current User: ${currentUserHandle}, Sender: ${msg.chatSenderID}, Is Current User: ${isCurrentUser}`); // debug
 
     return {
       id: msg.chatMessageID,
       position: isCurrentUser ? 'right' : 'left',
       type: 'text',
-      title: msg.chatSenderID,
+      title: senderHandle,
       text: msg.chatMessage,
       dateString: new Date(msg.createdAt).toLocaleString(),
     };
@@ -197,7 +194,7 @@ const ChatModule = () => {
   const onMessageSubmit = useCallback(() => {
 
     if (user && message && socketRef.current) {
-      const senderId = user.email || user.name;
+      const senderId = user.email;
       const newMessage = {
         chatSenderID: senderId,
         chatRoomID: 'main',
