@@ -21,10 +21,14 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import DidLeftSidebar from './DidLeftSidebar';
-import { useRecoilState, useRecoilValue } from 'recoil';
-import { dataState, DataType, filterState, FilterType} from '../recoil/dataRecoil';
+import { constSelector, useRecoilState, useRecoilValue } from 'recoil';
+import { dataState, DataType, filterState, FilterType } from '../recoil/dataRecoil';
 import axios from 'axios';
 import FilterBar from './Filter';
+import { set } from 'video.js/dist/types/tech/middleware';
+
+import { AlertModule } from './AlertModule';
+import ChatToggleComponent from './ChatToggle';
 
 interface disasterInfoHover {
   dId: string;
@@ -40,11 +44,11 @@ interface disasterInfo {
   dCountry: string;
   dStatus: string;
   dDate: string;
-  dCountryLatitude: number|null;
-  dCountryLongitude: number|null;
+  dCountryLatitude: number | null;
+  dCountryLongitude: number | null;
   dLatitude: string;
   dLongitude: string;
-  objectId:number;
+  objectId: number;
 }
 
 interface AnimationState {
@@ -57,7 +61,7 @@ const EarthCesium = () => {
   const cesiumContainer = useRef(null);
   const router = useRouter();
   const search = useSearchParams();
-  const viewerRef = useRef<Viewer|null>(null);
+  const viewerRef = useRef<Viewer | null>(null);
   const [isUserInput, setIsUserInput] = useState(true);
   const [showSidebar, setShowSidebar] = useState<boolean>(false);
   const [data, setData] = useRecoilState(dataState); // dataState를 data와 setData로 분리하여 사용
@@ -65,8 +69,8 @@ const EarthCesium = () => {
   const [dIdValue, setDIdValue] = useState<string>('');
   const [custom, setCustom] = useState<CustomDataSource|null>(null);
   const [clickedEntity, setClickedEntity] = useState(null);
-  const [activeAnimation, setActiveAnimation] = useState<AnimationState|null>(null);
-  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [originalSize, setOriginalSize] = useState(null);
+  const [activeAnimation, setActiveAnimation] = useState<AnimationState | null>(null);
 
 
   // 디테일 사이드바 토글
@@ -81,7 +85,7 @@ const EarthCesium = () => {
   },[showSidebar,activeAnimation]);
 
   // 재난 타입에 따른 색상 지정
-  function getColorForDisasterType(type:any) {
+  function getColorForDisasterType(type: any) {
     switch (type) {
       case "Tropical Cyclone":
         return "RED";
@@ -129,9 +133,9 @@ const EarthCesium = () => {
   }
 
   useEffect(() => {
-      // 이미 Viewer가 초기화된 경우 새로 생성하지 않음
+    // 이미 Viewer가 초기화된 경우 새로 생성하지 않음
     if (typeof window !== 'undefined' && cesiumContainer.current) {
-      let viewer = new Viewer(cesiumContainer.current,{
+      let viewer = new Viewer(cesiumContainer.current, {
         animation: false, // 애니메이션 위젯 비활성화
         baseLayerPicker: false,// 베이스 레이어 선택기 비활성화
         fullscreenButton: false,// 전체 화면 버튼 비활성화
@@ -145,7 +149,7 @@ const EarthCesium = () => {
         navigationHelpButton: false,// 네비게이션 도움말 버튼 비활성화
         creditContainer: document.createElement("none"), // 스택오버플로우 참고
       });
-      
+
       viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
       viewer.scene.screenSpaceCameraController.maximumZoomDistance = 18090749.93102962; // 최대 확대 거리 (미터 단위)
       viewer.scene.screenSpaceCameraController.enableTilt = false; // 휠클릭 회전 활성화 여부
@@ -153,13 +157,13 @@ const EarthCesium = () => {
       viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_DOUBLE_CLICK); // 더블클릭 이벤트 제거
       viewer.scene.globe.enableLighting = false; // 조명 활성화 여부
       viewer.scene.light = new DirectionalLight({
-        direction: Cartesian3.fromDegrees(1.0,1.0,1.0),
+        direction: Cartesian3.fromDegrees(1.0, 1.0, 1.0),
         intensity: 11,
       });
 
       // viewer 인스턴스 저장
       viewerRef.current = viewer;
-          
+
       // layout 추가
       createWorldImageryAsync({
         style: IonWorldImageryStyle.AERIAL_WITH_LABELS,
@@ -169,30 +173,30 @@ const EarthCesium = () => {
       }).catch((err) => {
         console.log(`layout추가 실패: ${err}`);
       });
-      
+
       // viewer 정리 로직 추가
       return () => {
-        if (viewer && viewer.destroy){
-        viewer?.destroy();
+        if (viewer && viewer.destroy) {
+          viewer?.destroy();
         }
       }
     }
-  },[]);
+  }, []);
 
-    //데이터 load로직
-    const loadData = async () => {
-      try{
-        const [oldData, newData] = await Promise.all([
-          axios.get('https://worldisaster.com/api/oldDisasters'),
-          axios.get('https://worldisaster.com/api/newDisasters'),
-        ]);
-        setData(oldData.data.concat(newData.data));
-        setCustom(new CustomDataSource('Disasters'));
-        console.log(`데이터 로드 성공`);
-      } catch(err) {
-        console.log('데이터 로드 실패', err);
-      }
+  //데이터 load로직
+  const loadData = async () => {
+    try {
+      const [oldData, newData] = await Promise.all([
+        axios.get('https://worldisaster.com/api/oldDisasters'),
+        axios.get('https://worldisaster.com/api/newDisasters'),
+      ]);
+      setData(oldData.data.concat(newData.data));
+      setCustom(new CustomDataSource('Disasters'));
+      console.log(`데이터 로드 성공`);
+    } catch (err) {
+      console.log('데이터 로드 실패', err);
     }
+  }
 
     const applyFilters = () => {
       const viewer = viewerRef.current;
@@ -244,33 +248,33 @@ const EarthCesium = () => {
                 },
                 properties: item,
             }))
-          } else {
-            entityToAdd = new Entity({
-              position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
-              point: {
-                pixelSize: 10,
-                heightReference: 0,
-                color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
-              },
-              properties: item,
-            });
-          }
-          // rotateEntity(entityToAdd, viewer, item);
-          custom.entities.add(entityToAdd)
+        } else {
+          entityToAdd = new Entity({
+            position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
+            point: {
+              pixelSize: 10,
+              heightReference: 0,
+              color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
+            },
+            properties: item,
+          });
         }
-      });
-    }
-  
-  useEffect(()=>{
-    loadData();
-  },[]) 
+        // rotateEntity(entityToAdd, viewer, item);
+        custom.entities.add(entityToAdd)
+      }
+    });
+  }
 
-  useEffect(()=>{
+  useEffect(() => {
+    loadData();
+  }, [])
+
+  useEffect(() => {
     if (!custom || !viewerRef.current) return;
-      // custom.entities.removeAll();
-      viewerRef.current.dataSources.remove(custom);
-      console.log(3);
-  },[dataFilter])
+    // custom.entities.removeAll();
+    viewerRef.current.dataSources.remove(custom);
+    console.log(3);
+  }, [dataFilter])
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -279,14 +283,14 @@ const EarthCesium = () => {
     }
     const customDataSource = new CustomDataSource('Disasters');
     viewer.dataSources.add(customDataSource);
-    console.log(1);
-  }, [dataFilter,data]);
-  
-  useEffect(()=>{
+    console.log(1); // debug
+  }, [dataFilter, data]);
+
+  useEffect(() => {
     if (!custom || !viewerRef.current) return;
     applyFilters();
-    console.log(2);
-  },[dataFilter,data])
+    console.log(2); // debug
+  }, [dataFilter, data])
 
   // 클릭 이벤트 관리
   useEffect(() => {
@@ -309,11 +313,11 @@ const EarthCesium = () => {
     const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
 
     // 호버 이벤트
-    handler.setInputAction((movement:any) => {
+    handler.setInputAction((movement: any) => {
       const pickedObject = viewerRef.current?.scene.pick(movement.endPosition);
       if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties && !showSidebar) {
         const properties = pickedObject.id.properties;
-        const disasterData:disasterInfoHover = {
+        const disasterData: disasterInfoHover = {
           dId: properties._dID?._value,
           dType: properties._dType?._value,
           dCountry: properties._dCountry?._value,
@@ -337,11 +341,11 @@ const EarthCesium = () => {
     }, ScreenSpaceEventType.MOUSE_MOVE);
 
     // 원클릭 이벤트
-    handler.setInputAction((click:any) => {
+    handler.setInputAction((click: any) => {
       const pickedObject = viewer.scene.pick(click.position);
       if (defined(pickedObject) && pickedObject.id && pickedObject.id.properties) {
         const properties = pickedObject.id.properties;
-        const disasterData:disasterInfo = {
+        const disasterData: disasterInfo = {
           dId: properties._dID?._value,
           dType: properties._dType?._value,
           dCountry: properties._dCountry?._value,
@@ -387,7 +391,7 @@ const EarthCesium = () => {
     const originalSize = entity.point.pixelSize.getValue(JulianDate.now());
     const maxSize = originalSize * 5; // 최대 크기
     let currentSize = originalSize;
-  
+
     const onTickListener = () => {
       if (!entity.point) return;
   
@@ -405,7 +409,7 @@ const EarthCesium = () => {
     if (activeAnimation) {
       activeAnimation.stop();
     }
-  
+
     viewerRef.current?.clock.onTick.addEventListener(onTickListener);
   
     // 애니메이션 상태 업데이트
@@ -419,10 +423,10 @@ const EarthCesium = () => {
   // 카메라 이동마다 이벤트 관리
   useEffect(() => {
     const viewer = viewerRef.current;
-    if(!viewer || !viewer.scene || !viewer.camera) {
+    if (!viewer || !viewer.scene || !viewer.camera) {
       return;
     };
-    
+
     const moveEndListener = viewer.camera.moveEnd.addEventListener(() => {
       const cameraPosition = viewer.camera.positionCartographic;
       const longitude = Math.toDegrees(cameraPosition.longitude).toFixed(4);
@@ -431,13 +435,13 @@ const EarthCesium = () => {
       router.push(`/earth?lon=${longitude}&lat=${latitude}&height=${cameraHeight}`, undefined);
     });
 
-    return()=>{
-      if (!isUserInput){
+    return () => {
+      if (!isUserInput) {
         moveEndListener()
       }
     }
 
-  }, [viewerRef.current?.camera,search.get('did')]);
+  }, [viewerRef.current?.camera, search.get('did')]);
 
   // url로 들어오는 경우 이벤트 관리
   useEffect(() => {
@@ -446,22 +450,22 @@ const EarthCesium = () => {
     const lat = search.get('lat');
     const zoomHeight = search.get('height');
     const detail = search.get('did');
-    if(!viewer || !viewer.scene || !viewer.camera || !isUserInput) {
+    if (!viewer || !viewer.scene || !viewer.camera || !isUserInput) {
       return;
     };
     if (lon && lat && viewer && viewer.scene && viewer.camera) {
       viewer.camera.flyTo({
-        destination: Cartesian3.fromDegrees(lon?Number(lon):0, lat?Number(lat):0, zoomHeight?Number(zoomHeight):10e5),
+        destination: Cartesian3.fromDegrees(lon ? Number(lon) : 0, lat ? Number(lat) : 0, zoomHeight ? Number(zoomHeight) : 10e5),
         duration: 1,
         complete: () => {
-          if (detail){
+          if (detail) {
             setDIdValue(detail);
             setShowSidebar(true);
           }
         }
       });
     }
-  },[search.get('lon'), search.get('lat'), search.get('height'), search.get('did')]);
+  }, [search.get('lon'), search.get('lat'), search.get('height'), search.get('did')]);
 
   return (
     <>
@@ -469,7 +473,9 @@ const EarthCesium = () => {
         {/* <ModalComponent /> */}
       </div>
       {showSidebar && <DidLeftSidebar onClose={toggleSidebar} dID={dIdValue} />}
-      <FilterBar/>
+      <FilterBar />
+      <AlertModule />
+      <ChatToggleComponent />
     </>
   );
 };

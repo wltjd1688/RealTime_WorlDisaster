@@ -24,6 +24,15 @@ export interface FilterType{
     selectedLive: boolean;
 }
 
+export interface UserType {
+  isLoggedIn: boolean,
+  userInfo: {
+    name: string,
+    email: string,
+    provider: string,
+  } | null,
+}
+
 
 // Recoil을 사용하여 상태를 관리하는 원자(atom) 정의
 export const dataState = atom<DataType[]>({
@@ -41,3 +50,10 @@ export const filterState = atom<FilterType>({
   }
 })
 
+export const userLoginState = atom<UserType>({
+  key: 'userLoginState',
+  default: {
+    isLoggedIn: false,
+    userInfo: null,
+  },
+});

@@ -1,10 +1,12 @@
 "use client"
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import io from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import Cookies from 'js-cookie';
 import { MessageList, Input, Button, Popup } from 'react-chat-elements';
 import 'react-chat-elements/dist/main.css';
+import { useRecoilValue } from 'recoil';
+import { userLoginState } from '../recoil/dataRecoil';
 
 /* 채팅 메시지의 구조 */
 interface ChatMessage {
@@ -17,20 +19,22 @@ interface ChatMessage {
 
 /* 로그인 및 유저 정보 활용을 위한 구조 */
 interface User {
-  name: string;
   email: string;
+  name: string;
   provider: string;
 }
 
 /* 실제 모듈 */
 const ChatModule = () => {
 
-  const socket = io('https://worldisaster.com/chats');
+  const loginState = useRecoilValue(userLoginState);
+  const user = loginState.isLoggedIn ? (loginState.userInfo as User) : null;
 
   /* React에서는 하나의 component마다 그 상태를 상징하는 State가 있음.
      useState()함수를 통해서 어떤 component에서 함수에서 사용 가능한 배열과 세팅용 함수를 추출할 수 있음 */
 
-  const [user, setUser] = useState<User | null>(null); // 로그인된 유저 정보
+  const socketRef = useRef<Socket | null>(null); // 소켓 연결은 단 한번만 (연결되면 not null로 상태값이 바뀜)
+  // const [user, setUser] = useState<User | null>(null); // 로그인된 유저 정보
 
   const [message, setMessage] = useState(''); // 작성중인 메시지
   const [inputKey, setInputKey] = useState(Math.random()); // input 클리어링 버그 해결
@@ -39,71 +43,116 @@ const ChatModule = () => {
   const [messageListArray, setMessageListArray] = useState<any>([]); // react-chat-element 전용 리스트
   const messageListRef = useRef(); // react-chat-element에서 필요한 Reference 선언
 
+  // const lastProcessedMessageIdRef = useRef<number | null>(null);
+
   /* 로그인 여부 확인 */
+  // useEffect(() => {
+  //   const token = Cookies.get('access-token');
+  //   if (token) {
+  //     axios.get('https://worldisaster.com/api/auth/info', {
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`
+  //       }
+  //     })
+  //       .then(response => {
+  //         if (JSON.stringify(response.data) !== JSON.stringify(user)) {
+  //           setUser(response.data);
+  //         }
+  //       })
+  //       .catch(error => {
+  //         // console.error("Error fetching user info:", error); // debug-only
+  //       });
+  //   }
+  // }, [user]);
+
+  /* 웹소켓 연결 기능 */
   useEffect(() => {
-    const token = Cookies.get('access-token');
-    if (token) {
-      axios.get('https://worldisaster.com/api/auth/info', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-        .then(response => {
-          setUser(response.data);
-        })
-        .catch(error => {
-          console.error("Error fetching user info:", error);
-        });
+
+    /* 소켓 연결이 없어야만 연결 시도 */
+    if (!socketRef.current) {
+      socketRef.current = io('https://worldisaster.com/chats', {
+        withCredentials: true, // CORS 문제를 해결하기 위한 옵션
+        path: '/socket.io', // Sockets.io 라이브러리의 표준값
+        transports: ['websocket'], // 트랜스포트 방식을 "websocket"으로 지정
+      });
     }
-  }, []);
 
-  /* 웹소켓 연결 및 실제 메시징 기능 */
-  useEffect(() => {
+    /* 소켓 연결에 성공하면 본격적으로 소켓 기능들 접근 */
+    if (socketRef.current) {
 
-    /* 소켓 연결에 성공하면 로깅 및 룸 조인하기 */
-    socket.on('connect', () => {
-      console.log('Chats 웹소켓 연결 성공');
-      socket.emit('joinRoom', 'main');
-    });
+      socketRef.current.on('connect', () => {
+        socketRef.current?.emit('joinRoom', 'main');
+        console.log('Chats 웹소켓 연결 성공');
+      });
 
-    /* 채팅 히스토리를 불러오는 함수 */
-    const fetchChatHistory = async () => {
-      try {
-        const response = await axios.get(`https://worldisaster.com/api/chat/room/main/12H`);
-        const initialChat = response.data;
-
-        // setChat()을 통해서 원본을 저장하긴 하지만, 이는 추후 활용 여지가 있기 때문이지 당장 필요한건 아님
-        setChat(initialChat);
-
-        // 당장 필요한건 이 메시지를 react-chat-element에서 기대하는 배열 형태로 가공하는 것
-        const transformedInitialChat = initialChat.map(transformMessage);
-        setMessageListArray(transformedInitialChat);
-
-      } catch (error) {
-        console.error("Error fetching chat history:", error);
-      }
-    };
-    fetchChatHistory();
-
-    /* 서버에서 newMessage 라는 제목으로 메시지를 발송, 여기서 받아서 처리 */
-    socket.on('newMessage', (newMessage: ChatMessage) => {
-      setChat((prevChat) => [...prevChat, newMessage]);
-      const transformedMessage = transformMessage(newMessage);
-      setMessageListArray((prevMessages: any) => [...prevMessages, transformedMessage]);
-    });
-
-    /* 연결이 끊기면 로그 발신 */
-    socket.on('disconnect', () => {
-      console.log('Disconnected from the server.');
-    });
+      /* 연결이 끊기면 로그 발신 */
+      socketRef.current.on('disconnect', () => {
+        // console.log('Disconnected from the server.'); // debug-only
+      });
+    }
 
     return () => {
-      socket.disconnect();
+      if (socketRef.current?.connected) {
+        socketRef.current.disconnect();
+      }
     };
   }, []);
 
-  /* 채팅 스크롤 관리 */
+  /* 메시지 호출, 로딩, 그리고 실시간 처리 */
+  useEffect(() => {
+    if (socketRef.current) {
+      /* 채팅 히스토리를 불러오는 함수 */
+      const fetchChatHistory = async () => {
+        try {
+          const response = await axios.get(`https://worldisaster.com/api/chat/room/main/12H`);
+          const initialChat = response.data;
 
+          // setChat()을 통해서 원본을 저장하긴 하지만, 이는 추후 활용 여지가 있기 때문이지 당장 필요한건 아님
+          setChat(initialChat);
+
+          // 당장 필요한건 이 메시지를 react-chat-element에서 기대하는 배열 형태로 가공하는 것
+          const transformedInitialChat = initialChat.map((msg: ChatMessage) => transformMessage(msg, user));
+          setMessageListArray(transformedInitialChat);
+
+        } catch (error) {
+          // console.error("Error fetching chat history:", error); // debug-only
+        }
+      };
+      fetchChatHistory();
+
+      /* 서버에서 newMessage 라는 제목으로 메시지를 발송, 여기서 받아서 처리 */
+
+      // socketRef.current.on('newMessage', (receivedMessage: ChatMessage) => {
+      //   console.log("Received message:", receivedMessage);
+      //   console.log("Current user state:", user);
+
+      //   // Check if this message has already been processed
+      //   if (receivedMessage.chatMessageID === lastProcessedMessageIdRef.current) {
+      //     console.log("This message has already been processed. Ignoring.");
+      //     return;
+      //   }
+
+      //   // Update the last processed message ID
+      //   lastProcessedMessageIdRef.current = receivedMessage.chatMessageID;
+
+      //   // Process the message
+      //   setChat((prevChat) => [...prevChat, receivedMessage]);
+      //   const transformedMessage = transformMessage(receivedMessage, user);
+      //   setMessageListArray((prevMessages: any) => [...prevMessages, transformedMessage]);
+
+      //   console.log("Processed and added the message to the state.");
+      // });
+
+      socketRef.current.on('newMessage', (receivedMessage: ChatMessage) => {
+        setChat((prevChat) => [...prevChat, receivedMessage]);
+        const transformedMessage = transformMessage(receivedMessage, user);
+        setMessageListArray((prevMessages: any) => [...prevMessages, transformedMessage]);
+      });
+
+    }
+  }, [user]);
+
+  /* 채팅 스크롤 및 유저네임 클릭 기능 관리 (react에서 추천되는 방식은 아니나, 라이브러리 한계로 부득이하게 적용) */
   useEffect(() => {
     const messageList = document.querySelector('.message-list');
     if (messageList) {
@@ -112,38 +161,61 @@ const ChatModule = () => {
         lastMessage.scrollIntoView({ behavior: 'smooth' });
       }
     }
-  }, [messageListArray]); // 메시지 배열이 업데이트 될 때마다 호출
 
-  /* 여기서부터는 리턴되는 HTML 값을 위한 함수들 */
+    const messageTitles = document.querySelectorAll('.rce-mbox-title');
+    messageTitles.forEach((title) => {
+      const htmlTitle = title as HTMLElement;
+      htmlTitle.style.pointerEvents = 'none';
+    });
+  }, [messageListArray]);
 
-  const transformMessage = (msg: ChatMessage) => ({
-    id: msg.chatMessageID,
-    position: user?.name === msg.chatSenderID ? 'right' : 'left',
-    type: 'text',
-    title: msg.chatSenderID,
-    text: msg.chatMessage,
-    dateString: new Date(msg.createdAt).toLocaleString(),
-  });
+  /* API나 웹소켓으로 받은 채팅 메시지를 react-chat-element에서 해석 가능하도록 변환하는 함수 */
+  const transformMessage = (msg: ChatMessage, currentUser: User | null) => {
+    
+    if (!currentUser) {
+      return;
+    }
 
-  const onMessageSubmit = () => {
-    if (user && message) {
+    const currentUserHandle = currentUser?.email || currentUser?.name; // 이메일 또는 이름을 사용
+    const senderHandle = msg.chatSenderID.trim().toLowerCase();
+    const isCurrentUser = currentUserHandle === senderHandle;
+    
+
+    console.log(`Current User: ${currentUserHandle}, Sender: ${msg.chatSenderID}, Is Current User: ${isCurrentUser}`); // debug
+
+    return {
+      id: msg.chatMessageID,
+      position: isCurrentUser ? 'right' : 'left',
+      type: 'text',
+      title: msg.chatSenderID,
+      text: msg.chatMessage,
+      dateString: new Date(msg.createdAt).toLocaleString(),
+    };
+  };
+
+  /* 메시지를 서버로 전송하는 함수 */
+  const onMessageSubmit = useCallback(() => {
+
+    if (user && message && socketRef.current) {
+      const senderId = user.email || user.name;
       const newMessage = {
-        chatSenderID: user.name,
+        chatSenderID: senderId,
         chatRoomID: 'main',
         chatMessage: message,
       };
-      socket.emit('message', newMessage);
+
+      socketRef.current.emit('message', newMessage);
       setMessage('');
       setInputKey(Math.random()); // 인풋 섹션만 강제 로딩 (react-chat-element 버그로 보임)
 
-      setTimeout(() => { // input textarea에 커서를 이동
+      setTimeout(() => { // input textarea에 커서를 이동 (query-selector는 react에서 추천되는 방식이 아니지만, 라이브러리 toBottomHeight() 오작동으로 불가피)
         const textarea = document.querySelector('.chat-input textarea') as HTMLTextAreaElement;
         if (textarea) {
           textarea.focus();
         }
       }, 0);
     }
-  };
+  }, [user, message, socketRef]);
 
   /* Component 반환값 CSS 적용 */
 
@@ -151,15 +223,14 @@ const ChatModule = () => {
     display: 'flex', // 전체 모듈을 flex로 지정
     flexGrow: 1, // 채팅 내역이 다이내믹하게 사이즈가 조정되도록
     flexDirection: 'column', // 쌓이는 방향은 아래로
-    justifyContent: 'space-between', // 채팅 버블 객체간 거리
-    backgroundColor: '#1c1c1c',
+    justifyContent: 'flex-start', // 객체는 위에서부터 쌓이도록
+    backgroundColor: '#181717d9',
     color: '#f5f5f5',
     padding: '10px',
     margin: '0 auto 0 auto',
-    borderRadius: '8px',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
     maxWidth: '400px',
-    maxHeight: '500px',
+    maxHeight: '600px',
     width: '100%',
     overflow: 'auto'
   };
@@ -179,8 +250,9 @@ const ChatModule = () => {
 
   const loginMessageStyle: React.CSSProperties = {
     textAlign: 'center',
-    color: '#f5f5f5',
-    margin: '20px 0'
+    color: '#7ea2bd',
+    margin: '20px 0',
+    padding: '10px 0px 0px 0px',
   };
 
   const popupStyle: React.CSSProperties = {
@@ -251,11 +323,11 @@ const ChatModule = () => {
               placeholder='Type a message...'
               defaultValue=''
               multiline={true}
-              maxlength={200}
+              maxlength={100}
               onMaxLengthExceed={tooManyCharacters}
               maxHeight={150}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMessage(e.target.value)}
-              onKeyPress={(e:any) => {
+              onKeyPress={(e: any) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   onMessageSubmit();
@@ -264,7 +336,6 @@ const ChatModule = () => {
               rightButtons={
                 <Button
                   color='white'
-                  backgroundColor='#4caf50'
                   text='Send'
                   onClick={onMessageSubmit}
                 />
