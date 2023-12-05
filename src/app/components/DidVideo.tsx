@@ -114,20 +114,28 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ dID }) => {
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+  const [currentVideoUrl, setCurrentVideoUrl] = useState<string>("");
 
   useEffect(() => {
     const fetchVideos = async () => {
       setLoading(true);
       setError("");
       try {
-        const response = await axios.get(`https://worldisaster.com/api/upload/${dID}`);
-        setVideoUrls(response.data.urls);
+        const response = await axios(`https://worldisaster.com/api/upload/${dID}`,{timeout: 5000});
+        const data = response.data;
+        if(!data.approved) return setError("동영상이 승인되지 않았습니다.");
+        if (data.urls && data.urls.length > 0) {
+          setVideoUrls(data.urls);
+          setCurrentVideoUrl(data.urls[0]);
+        } else {
+          setError("동영상이 없습니다.");
+        }
       } catch (err) {
         setError("동영상을 불러오는 데 실패했습니다.");
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchVideos();
   }, [dID]);
@@ -137,12 +145,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ dID }) => {
       if (!videojs.getPlayers()[videoRef.current.id]) {
         // Video.js 플레이어가 아직 초기화되지 않았으면 초기화
         videojs(videoRef.current, {
-          sources: [{ src: videoUrls[0], type: "application/x-mpegURL" }],
+          sources: [{ src: currentVideoUrl, type: "application/x-mpegURL" }],
         });
       } else {
         // 이미 초기화된 플레이어가 있으면 소스만 변경
         const player = videojs.getPlayers()[videoRef.current.id];
-        player.src({ src: videoUrls[0], type: "application/x-mpegURL" });
+        player.src({ src: currentVideoUrl, type: "application/x-mpegURL" });
       }
     }
 

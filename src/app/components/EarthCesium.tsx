@@ -1,39 +1,30 @@
 "use client"
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Viewer,
   Math, 
   Cartesian3, 
   Color, 
-  PinBuilder, 
-  EntityCluster,
   IonWorldImageryStyle, 
   createWorldImageryAsync, 
   CustomDataSource, 
-  VerticalOrigin, 
-  NearFarScalar, 
   ScreenSpaceEventHandler, 
   defined, 
   ScreenSpaceEventType, 
   Ellipsoid, 
   Entity, 
   JulianDate,
-  Transforms,
-  HeadingPitchRoll,
   ConstantProperty,
   HeightReference,
-  BingMapsImageryProvider,
-  ImageryLayerCollection,
-  ImageryLayer,
-  DirectionalLight} from 'cesium';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+  DirectionalLight,
+  NearFarScalar} from 'cesium';
+import { useRouter, useSearchParams } from 'next/navigation';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import DidLeftSidebar from './DidLeftSidebar';
-import { constSelector, useRecoilState, useRecoilValue } from 'recoil';
+import { useRecoilState, useRecoilValue } from 'recoil';
 import { dataState, DataType, filterState, FilterType} from '../recoil/dataRecoil';
 import axios from 'axios';
 import FilterBar from './Filter';
-import { set } from 'video.js/dist/types/tech/middleware';
 
 interface disasterInfoHover {
   dId: string;
@@ -68,29 +59,26 @@ const EarthCesium = () => {
   const search = useSearchParams();
   const viewerRef = useRef<Viewer|null>(null);
   const [isUserInput, setIsUserInput] = useState(true);
-  const [zoomLevel, setZoomLevel] = useState(18090749.93102962);
-  const [showSidebar, setShowSidebar] = useState<Boolean>(false);
+  const [showSidebar, setShowSidebar] = useState<boolean>(false);
   const [data, setData] = useRecoilState(dataState); // dataState를 data와 setData로 분리하여 사용
   const dataFilter = useRecoilValue(filterState);
   const [dIdValue, setDIdValue] = useState<string>('');
   const [custom, setCustom] = useState<CustomDataSource|null>(null);
-  const [removeAfter, setRemoveAfter] = useState<boolean>(false);
   const [clickedEntity, setClickedEntity] = useState(null);
-  const [originalSize, setOriginalSize] = useState(null);
   const [activeAnimation, setActiveAnimation] = useState<AnimationState|null>(null);
+  const [selectedPoint, setSelectedPoint] = useState(null);
 
 
   // 디테일 사이드바 토글
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setShowSidebar(!showSidebar);
     if (!activeAnimation?.entity.point) return;
-    console.log(activeAnimation)
     if (activeAnimation) {
       // 현재 애니메이션 중단 및 크기 복원
       activeAnimation.stop();
       activeAnimation.entity.point.pixelSize = new ConstantProperty(activeAnimation.originalSize);
     }
-  }
+  },[showSidebar,activeAnimation]);
 
   // 재난 타입에 따른 색상 지정
   function getColorForDisasterType(type:any) {
@@ -156,42 +144,6 @@ const EarthCesium = () => {
         timeline: false,// 타임라인 비활성화
         navigationHelpButton: false,// 네비게이션 도움말 버튼 비활성화
         creditContainer: document.createElement("none"), // 스택오버플로우 참고
-        // navigationInstructionsInitiallyVisible?: boolean;
-        // scene3DOnly?: boolean;
-        // shouldAnimate?: boolean;
-        // clockViewModel?: ClockViewModel;
-        // selectedImageryProviderViewModel?: ProviderViewModel;
-        // imageryProviderViewModels?: ProviderViewModel[];
-        // selectedTerrainProviderViewModel?: ProviderViewModel;
-        // terrainProviderViewModels?: ProviderViewModel[];
-        // baseLayer?: ImageryLayer | false;
-        // terrainProvider?: TerrainProvider;
-        // terrain?: Terrain;
-        // skyBox?: SkyBox | false;
-        // skyAtmosphere?: SkyAtmosphere | false;
-        // fullscreenElement?: Element | string;
-        // useDefaultRenderLoop?: boolean;
-        // targetFrameRate?: number;
-        // showRenderLoopErrors?: boolean;
-        // useBrowserRecommendedResolution?: boolean;
-        // automaticallyTrackDataSourceClocks?: boolean;
-        // contextOptions?: ContextOptions;
-        // sceneMode?: SceneMode;
-        // mapProjection?: MapProjection;
-        // globe?: Globe | false;
-        // orderIndependentTranslucency?: boolean;
-        // creditContainer?: Element | string;
-        // creditViewport?: Element | string;
-        // dataSources?: DataSourceCollection;
-        // shadows?: boolean;
-        // terrainShadows?: ShadowMode;
-        // mapMode2D?: MapMode2D;
-        // projectionPicker?: boolean;
-        // blurActiveElementOnCanvasFocus?: boolean;
-        // requestRenderMode?: boolean;
-        // maximumRenderTimeChange?: number;
-        // depthPlaneEllipsoidOffset?: number;
-        // msaaSamples?: number;
       });
       
       viewer.scene.screenSpaceCameraController.minimumZoomDistance = 0; // 최소 확대 거리 (미터 단위)
@@ -199,7 +151,6 @@ const EarthCesium = () => {
       viewer.scene.screenSpaceCameraController.enableTilt = false; // 휠클릭 회전 활성화 여부
       viewer.scene.screenSpaceCameraController.enableLook = true; // 우클릭 회전 활성화 여부
       viewer.screenSpaceEventHandler.removeInputAction(ScreenSpaceEventType.LEFT_DOUBLE_CLICK); // 더블클릭 이벤트 제거
-      // viewer.scene.globe.maximumScreenSpaceError = 0; // 지형의 최대 화면 공간 오차 (픽셀 단위)
       viewer.scene.globe.enableLighting = false; // 조명 활성화 여부
       viewer.scene.light = new DirectionalLight({
         direction: Cartesian3.fromDegrees(1.0,1.0,1.0),
@@ -266,8 +217,6 @@ const EarthCesium = () => {
       }
   
       custom.entities.removeAll();
-
-      // console.log(viewer.entities)
   
       filteredData.forEach((item:DataType) => {
         if (item.dLongitude && item.dLatitude) {
@@ -277,12 +226,11 @@ const EarthCesium = () => {
               entityToAdd = new Entity({
                 position: Cartesian3.fromDegrees(Number(item.dLongitude), Number(item.dLatitude)),
                 point: {
-                  pixelSize: 8,
-                  heightReference: 0,
+                  pixelSize: 10,
                   outlineWidth: 2,
                   outlineColor: item.dAlertLevel=="Green"? Color.LIMEGREEN:item.dAlertLevel=="Orange"? Color.YELLOW:Color.TOMATO,
                   color: Color.fromCssColorString(getColorForDisasterType(item.dType)),
-                  
+                  scaleByDistance: new NearFarScalar(10e3, 3, 10e6, 0.7)
                 },
                 properties: item,
               })):(
@@ -372,9 +320,10 @@ const EarthCesium = () => {
           dStatus: properties._dStatus?._value,
           dDate: properties._dDate?._value,
         };
-        // pickedObject.id._point._pixelSize._value
         tooltip.innerHTML = `
-          <div>type: ${disasterData.dType}</div>
+          <div style="">
+            <div>type: ${disasterData.dType}</div>
+          </div>
           <div>Country: ${disasterData.dCountry}</div>
           <div>Data: ${disasterData.dDate}</div>
           <div>Status: ${disasterData.dStatus}</div>`;
@@ -384,6 +333,7 @@ const EarthCesium = () => {
       } else {
         tooltip.style.display = 'none';
       }
+
     }, ScreenSpaceEventType.MOUSE_MOVE);
 
     // 원클릭 이벤트
@@ -432,36 +382,32 @@ const EarthCesium = () => {
 
   const applyBlinkingEffect = (entity: Entity) => {
     if (!entity.point?.pixelSize) return;
-    console.log("apply들어옴: ",activeAnimation)  
-    // 새로운 애니메이션 적용
+  
+    let growing = true; // 크기가 커지고 있는지 여부를 나타내는 플래그
     const originalSize = entity.point.pixelSize.getValue(JulianDate.now());
-    let startTime = Date.now();
+    const maxSize = originalSize * 5; // 최대 크기
     let currentSize = originalSize;
   
     const onTickListener = () => {
       if (!entity.point) return;
   
-      let elapsedTime = Date.now() - startTime;
-      if (elapsedTime > 1000) {
-        // 애니메이션 시간이 끝났을 경우
-        entity.point.pixelSize = new ConstantProperty(20);
-        // entity.point.pixelSize = new ConstantProperty(originalSize);
-        return;
+      if (growing) {
+        currentSize += 1.5; // 점점 커지게 함
+        if (currentSize >= maxSize) growing = false; // 최대 크기에 도달하면 줄어드는 것으로 전환
+      } else {
+        currentSize -= 1.5; // 점점 작아지게 함
+        if (currentSize <= originalSize) growing = true; // 원래 크기로 돌아오면 다시 커지는 것으로 전환
       }
-  
-      // 애니메이션 계산 로직
-      let progress = elapsedTime / 1000;
-      currentSize = originalSize + 1.8*(originalSize * progress);
   
       entity.point.pixelSize = new ConstantProperty(currentSize);
     };
-
+  
     if (activeAnimation) {
       activeAnimation.stop();
     }
   
     viewerRef.current?.clock.onTick.addEventListener(onTickListener);
-
+  
     // 애니메이션 상태 업데이트
     setActiveAnimation({
       stop: () => viewerRef.current?.clock.onTick.removeEventListener(onTickListener),

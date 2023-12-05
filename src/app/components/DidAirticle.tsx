@@ -8,9 +8,8 @@ interface ArticleProps {
 
 interface ArticleData {
   headline: string;
-  author: string;
   url: string;
-  image: string;
+  image: string|null;
   // Add other necessary fields here
 }
 
@@ -20,11 +19,18 @@ const DidArticle: React.FC<ArticleProps> = ({ dID }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchArticle = async () => {
+    const fetchArticles = async () => {
       setIsLoading(true);
       try {
-        const response = await axios(`https://worldisaster.com/api/live/${dID}`);
-        setArticles(response.data); // 배열로 설정
+        // 두 API 엔드포인트에서 동시에 데이터를 가져옵니다.
+        const [liveResponse, archiveResponse] = await Promise.all([
+          axios(`https://worldisaster.com/api/live/${dID}`),
+          axios(`https://worldisaster.com/api/archiveNews/${dID}`)
+        ]);
+  
+        // 두 데이터 소스를 하나의 배열로 결합합니다.
+        const combinedArticles = [...liveResponse.data, ...archiveResponse.data];
+        setArticles(combinedArticles); // 결합된 결과를 상태에 저장합니다.
         console.log("기사 데이터 받음");
       } catch (err) {
         if (axios.isAxiosError(err)) {
@@ -36,8 +42,8 @@ const DidArticle: React.FC<ArticleProps> = ({ dID }) => {
         setIsLoading(false);
       }
     };
-
-    fetchArticle();
+  
+    fetchArticles();
   }, [dID]);
 
   if (isLoading) {
@@ -57,7 +63,7 @@ const DidArticle: React.FC<ArticleProps> = ({ dID }) => {
       {articles.map((article, index) => (
         <div key={index} className=" py-3">
             <div className="h-full border-2 border-gray-200 border-opacity-60 rounded-lg overflow-hidden">
-                <img className=" w-full object-cover object-center" src={article.image? article.image:"https://via.placeholder.com/150x100.png?text=NO IMAGE"} alt="article" />
+                {isNaN(parseInt(dID.charAt(0))) ?<img className=" w-full object-cover object-center" src={article.image? article.image:"https://via.placeholder.com/150x100.png?text=NO IMAGE"} alt="article" />:null}
                 <div className="p-6">
                     <h2 className="tracking-widest text-xs title-font font-medium text-gray-400 mb-1">{article.headline}</h2>
                     <div className="flex items-center flex-wrap">
